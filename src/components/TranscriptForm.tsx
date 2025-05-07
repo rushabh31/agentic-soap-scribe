@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { FileText, AlertCircle } from 'lucide-react';
+import { FileText, AlertCircle, Send } from 'lucide-react';
 import { useAgent } from '@/contexts/AgentContext';
 import ApiKeyForm from './ApiKeyForm';
 
@@ -82,13 +82,13 @@ const TranscriptForm: React.FC = () => {
             disabled={isProcessing}
           />
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex justify-end">
           <Button 
             type="submit" 
-            className="w-full" 
+            className="px-6 py-2" 
             disabled={isProcessing || !transcript.trim()}
           >
-            {isProcessing ? 'Processing...' : 'Process Transcript'}
+            {isProcessing ? 'Processing...' : 'Process Transcript'} <Send className="ml-2 h-4 w-4" />
           </Button>
         </CardFooter>
       </Card>
