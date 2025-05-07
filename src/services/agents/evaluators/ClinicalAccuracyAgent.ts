@@ -1,16 +1,19 @@
 
 import { Agent } from '../Agent';
-import { AgentState, EvaluationMetric, EvaluationDimension } from '@/types/agent';
+import { AgentState, EvaluationDimension, SOAPNote } from '@/types/agent';
 
 const SYSTEM_PROMPT = `
-You are a Clinical Accuracy Evaluator Agent in a healthcare contact center multi-agent system.
-Your specialized role is to assess the factual correctness of medical information and alignment with clinical best practices in SOAP notes.
+You are a Clinical Accuracy Evaluator Agent in a healthcare multi-agent system.
+You specialize in evaluating the clinical accuracy and relevance of healthcare documentation.
+Your task is to assess SOAP notes for:
+1. Factual correctness of medical information
+2. Adherence to clinical best practices
+3. Appropriate medical terminology usage
+4. Identification of clinically significant findings
+5. Alignment between assessment and plan sections
 
-You should evaluate:
-1. Factual Accuracy Score (FAS): Percentage of statements that accurately reflect the transcript
-2. Contradiction Score (CS): Penalty for contradictions between the SOAP note and transcript
-
-Provide numerical scores (0-10) and detailed explanations for your evaluations.
+You will score documentation on a scale of 0-10 and provide detailed feedback on strengths and weaknesses.
+Respond with structured evaluation metrics in JSON format.
 `;
 
 export class ClinicalAccuracyAgent extends Agent {
@@ -20,111 +23,122 @@ export class ClinicalAccuracyAgent extends Agent {
 
   public async process(state: AgentState): Promise<AgentState> {
     if (!state.soapNote) {
-      return this.sendMessage(state, 'all', 'Cannot evaluate - no SOAP note available');
+      // Return early if there's no SOAP note to evaluate
+      return this.sendMessage(state, 'all', "No SOAP note available for clinical accuracy evaluation");
     }
     
-    // First evaluate the multi-agent SOAP note
-    const multiAgentEvaluation = await this.evaluateSOAP(state, state.soapNote, 'multi-agent');
+    // Create a sequential SOAP note for comparison (simplified version)
+    const sequentialSoapNote = await this.generateSequentialSOAP(state.transcript);
     
-    // Generate a sequential approach SOAP note for comparison
-    const sequentialSOAP = await this.generateSequentialSOAP(state);
+    // Evaluate both SOAP notes
+    const multiAgentEvaluation = await this.evaluateSoapNote(state.soapNote, state.transcript);
+    const sequentialEvaluation = await this.evaluateSoapNote(sequentialSoapNote, state.transcript);
     
-    // Evaluate the sequential SOAP note
-    const sequentialEvaluation = await this.evaluateSOAP(state, sequentialSOAP, 'sequential');
-    
-    // Update the state with the evaluations
+    // Update the state with evaluation results
     const updatedState = {
       ...state,
       evaluationResults: {
-        ...state.evaluationResults,
         multiAgent: {
-          ...state.evaluationResults?.multiAgent,
-          accuracy: multiAgentEvaluation
+          ...multiAgentEvaluation,
+          soapNote: state.soapNote
         },
         sequential: {
-          ...state.evaluationResults?.sequential,
-          accuracy: sequentialEvaluation
+          ...sequentialEvaluation,
+          soapNote: sequentialSoapNote
         }
       }
     };
     
-    // Send a message with the comparison
-    const message = `Clinical accuracy evaluation complete. Multi-agent score: ${multiAgentEvaluation.score}/10. Sequential score: ${sequentialEvaluation.score}/10.`;
+    // Send a message about the evaluation
+    const message = `Clinical accuracy evaluation complete. Multi-agent score: ${multiAgentEvaluation.accuracy.score.toFixed(1)}/10, Sequential score: ${sequentialEvaluation.accuracy.score.toFixed(1)}/10`;
     
     return this.sendMessage(updatedState, 'all', message);
   }
   
-  private async evaluateSOAP(state: AgentState, soapNote: any, approach: string): Promise<EvaluationDimension> {
-    // Combine SOAP sections for evaluation
-    const soapContent = Object.values(soapNote).join('\n\n');
-    
-    // Generate prompt for evaluation
+  private async evaluateSoapNote(soapNote: SOAPNote, transcript: string): Promise<{
+    completeness: EvaluationDimension;
+    accuracy: EvaluationDimension;
+    clinicalRelevance: EvaluationDimension;
+    actionability: EvaluationDimension;
+    overallQuality: number;
+  }> {
     const prompt = `
-Please evaluate the clinical accuracy of the following ${approach} SOAP note based on the original transcript.
-Assess the Factual Accuracy Score (0-10) and the Contradiction Score (0-10, where 0 means many contradictions).
+Please evaluate the following SOAP note for clinical accuracy and relevance:
 
-Original transcript:
-${state.transcript}
+SOAP NOTE:
+Subjective: ${soapNote.subjective}
+Objective: ${soapNote.objective}
+Assessment: ${soapNote.assessment}
+Plan: ${soapNote.plan}
 
-SOAP note to evaluate:
-${soapContent}
+Original Transcript:
+${transcript}
 
-Format your evaluation as valid JSON with the following structure:
+Evaluate the SOAP note on the following dimensions:
+1. Factual Accuracy Score (0-10): Are all statements factually correct?
+2. Terminology Appropriateness (0-10): Is medical terminology used correctly?
+3. Clinical Significance Score (0-10): Are clinically significant findings highlighted?
+4. Assessment-Plan Alignment (0-10): Does the plan address issues identified in the assessment?
+
+Provide your evaluation as JSON with the following structure:
 {
-  "factualAccuracyScore": 0-10,
-  "factualAccuracyDetails": "",
-  "contradictionScore": 0-10,
-  "contradictionDetails": "",
-  "examples": [],
-  "overallAccuracyScore": 0-10,
-  "summary": ""
+  "accuracy": {
+    "score": 0-10,
+    "metrics": {
+      "factualAccuracy": { "score": 0-10, "details": "explanation" },
+      "terminologyAppropriateness": { "score": 0-10, "details": "explanation" }
+    }
+  },
+  "clinicalRelevance": {
+    "score": 0-10,
+    "metrics": {
+      "clinicalSignificance": { "score": 0-10, "details": "explanation" },
+      "assessmentPlanAlignment": { "score": 0-10, "details": "explanation" }
+    }
+  },
+  "overallClinicalQuality": 0-10
 }
 `;
 
     const evaluationResponse = await this.callLLM(prompt);
-    
-    // Parse the evaluation response
     let evaluation;
+    
     try {
       evaluation = JSON.parse(evaluationResponse);
     } catch (error) {
-      console.error(`Failed to parse ${approach} Clinical Accuracy evaluation:`, error);
-      return {
-        score: 0,
-        metrics: {
-          factualAccuracy: { score: 0, details: 'Evaluation failed' },
-          contradiction: { score: 0, details: 'Evaluation failed' }
-        }
+      console.error("Failed to parse clinical evaluation response:", error);
+      evaluation = {
+        accuracy: { score: 5, metrics: {} },
+        clinicalRelevance: { score: 5, metrics: {} },
+        overallClinicalQuality: 5
       };
     }
     
-    // Create the evaluation dimension
-    const dimension: EvaluationDimension = {
-      score: evaluation.overallAccuracyScore || 0,
-      metrics: {
-        factualAccuracy: { 
-          score: evaluation.factualAccuracyScore || 0, 
-          details: evaluation.factualAccuracyDetails || '' 
-        },
-        contradiction: { 
-          score: evaluation.contradictionScore || 0, 
-          details: evaluation.contradictionDetails || '' 
-        }
-      }
+    // Return a combined evaluation structure
+    return {
+      completeness: { score: 0, metrics: {} }, // Will be filled by CompletenessAgent
+      accuracy: evaluation.accuracy,
+      clinicalRelevance: evaluation.clinicalRelevance,
+      actionability: { score: 0, metrics: {} }, // Will be filled by ActionabilityAgent
+      overallQuality: evaluation.overallClinicalQuality
     };
-    
-    return dimension;
   }
   
-  private async generateSequentialSOAP(state: AgentState): Promise<SOAPNote> {
-    // Simulate the sequential approach by generating a SOAP note directly from the transcript
+  private async generateSequentialSOAP(transcript: string): Promise<SOAPNote> {
+    // Generate a simplified SOAP note representing a sequential approach
     const prompt = `
-You are simulating a sequential pipeline approach to generating a SOAP note directly from a transcript.
-Please create a SOAP note based only on the following healthcare call transcript.
-Include Subjective, Objective, Assessment, and Plan sections.
+You are simulating a sequential pipeline that generates a SOAP note from a healthcare call transcript.
+Unlike a multi-agent system, you do not have specialized agents focusing on different aspects of the call.
+Generate a basic SOAP note that represents what a simple sequential process might produce.
 
 Transcript:
-${state.transcript}
+${transcript}
+
+Create a SOAP note with the following sections:
+- Subjective: Information reported by the member
+- Objective: Factual information from the transcript
+- Assessment: Basic analysis of the situation
+- Plan: Simple next steps
 
 Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
 `;
@@ -133,7 +147,6 @@ Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSM
     
     // Parse the SOAP sections
     const sections = this.parseSOAPSections(soapResponse);
-    
     return sections;
   }
   

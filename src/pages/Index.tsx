@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
-import { Beaker, FileText, BarChart, ArrowRight, ChatBubbleIcon, Settings } from 'lucide-react';
+import { Beaker, FileText, BarChart, ArrowRight, MessageSquare, Settings } from 'lucide-react';
 
 const Index = () => {
   return (

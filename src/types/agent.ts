@@ -78,6 +78,7 @@ export interface EvaluationResults {
     clinicalRelevance: EvaluationDimension;
     actionability: EvaluationDimension;
     overallQuality: number;
+    soapNote?: SOAPNote;
   };
   sequential: {
     completeness: EvaluationDimension;
@@ -85,5 +86,6 @@ export interface EvaluationResults {
     clinicalRelevance: EvaluationDimension;
     actionability: EvaluationDimension;
     overallQuality: number;
+    soapNote?: SOAPNote;
   };
 }
