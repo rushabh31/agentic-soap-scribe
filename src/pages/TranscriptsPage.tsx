@@ -9,9 +9,11 @@ import ModelSelector from '@/components/ModelSelector';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Settings } from 'lucide-react';
+import { useSettings } from '@/contexts/SettingsContext';
 
 const TranscriptsPage = () => {
   const { isProcessing, hasApiConfig } = useAgent();
+  const { apiProvider, isOllamaConnected } = useSettings();
   
   return (
     <PageLayout>
@@ -109,7 +111,7 @@ AGENT: Thank you for calling HealthFirst. I hope your knee feels better soon. Ha
                 <ApiKeyForm />
               </div>
               
-              {hasApiConfig && (
+              {hasApiConfig && apiProvider === 'ollama' && isOllamaConnected && (
                 <>
                   <Separator />
                   <div>

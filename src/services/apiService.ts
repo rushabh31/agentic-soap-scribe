@@ -2,6 +2,7 @@
 const API_KEY_LOCAL_STORAGE = 'GROQ_API_KEY';
 const API_PROVIDER_LOCAL_STORAGE = 'API_PROVIDER';
 const OLLAMA_URL_LOCAL_STORAGE = 'OLLAMA_URL';
+const OLLAMA_MODEL_LOCAL_STORAGE = 'OLLAMA_MODEL';
 
 export type ApiProvider = 'groq' | 'ollama';
 
@@ -45,16 +46,23 @@ export const setOllamaUrl = (url: string): void => {
   localStorage.setItem(OLLAMA_URL_LOCAL_STORAGE, url);
 };
 
+export const getOllamaModel = (): string => {
+  return localStorage.getItem(OLLAMA_MODEL_LOCAL_STORAGE) || 'llama3';
+};
+
+export const setOllamaModel = (model: string): void => {
+  localStorage.setItem(OLLAMA_MODEL_LOCAL_STORAGE, model);
+};
+
 export const callApi = async (
-  messages: ApiMessage[],
-  model: string = 'llama-3.1-8b-instant'
+  messages: ApiMessage[]
 ): Promise<string> => {
   const provider = getApiProvider();
   
   if (provider === 'groq') {
-    return callGroqAPI(messages, model);
+    return callGroqAPI(messages);
   } else if (provider === 'ollama') {
-    return callOllamaAPI(messages, model);
+    return callOllamaAPI(messages);
   }
   
   throw new Error('Invalid API provider');
@@ -99,13 +107,17 @@ const callGroqAPI = async (
 };
 
 const callOllamaAPI = async (
-  messages: ApiMessage[],
-  model: string = 'llama3'
+  messages: ApiMessage[]
 ): Promise<string> => {
   const ollamaUrl = getOllamaUrl();
+  const ollamaModel = getOllamaModel();
   
   if (!ollamaUrl) {
     throw new Error('No Ollama URL configured. Please enter your Ollama URL in settings.');
+  }
+
+  if (!ollamaModel) {
+    throw new Error('No Ollama model selected. Please select a model in settings.');
   }
 
   try {
@@ -115,7 +127,7 @@ const callOllamaAPI = async (
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: model,
+        model: ollamaModel,
         messages: messages,
         options: {
           temperature: 0.2

@@ -4,36 +4,26 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSettings } from '@/contexts/SettingsContext';
-import { Cpu } from 'lucide-react';
+import { Cpu, RefreshCw } from 'lucide-react';
+import { Button } from './ui/button';
 
 interface ModelOption {
   value: string;
   label: string;
-  provider: 'groq' | 'ollama';
 }
 
-// Predefined model options
-const GROQ_MODELS: ModelOption[] = [
-  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant', provider: 'groq' },
-  { value: 'llama-3.1-8b', label: 'Llama 3.1 8B', provider: 'groq' },
-  { value: 'llama-3.1-70b', label: 'Llama 3.1 70B', provider: 'groq' },
-  { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', provider: 'groq' },
-];
-
-// We'll fetch Ollama models dynamically
 const ModelSelector: React.FC = () => {
-  const { apiProvider, ollamaUrl } = useSettings();
-  const [selectedModel, setSelectedModel] = useState<string>('llama-3.1-8b-instant');
+  const { ollamaUrl, ollamaModel, setOllamaModelValue, checkOllamaModelConnection, isOllamaModelConnected } = useSettings();
   const [ollamaModels, setOllamaModels] = useState<ModelOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch available Ollama models when provider is Ollama
+  // Fetch available Ollama models when component mounts or URL changes
   useEffect(() => {
-    if (apiProvider === 'ollama') {
+    if (ollamaUrl) {
       fetchOllamaModels();
     }
-  }, [apiProvider, ollamaUrl]);
+  }, [ollamaUrl]);
 
   const fetchOllamaModels = async () => {
     if (!ollamaUrl) return;
@@ -53,8 +43,7 @@ const ModelSelector: React.FC = () => {
       if (data.models) {
         const formattedModels = data.models.map((model: any) => ({
           value: model.name,
-          label: model.name,
-          provider: 'ollama'
+          label: model.name
         }));
         setOllamaModels(formattedModels);
       }
@@ -62,40 +51,53 @@ const ModelSelector: React.FC = () => {
       console.error('Error fetching Ollama models:', err);
       setError('Could not connect to Ollama server. Please ensure it\'s running.');
       setOllamaModels([
-        { value: 'llama3', label: 'Llama 3 (default)', provider: 'ollama' }
+        { value: 'llama3', label: 'Llama 3 (default)' }
       ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Determine which models to show based on the selected provider
-  const availableModels = apiProvider === 'groq' ? GROQ_MODELS : ollamaModels;
+  const handleModelChange = (value: string) => {
+    setOllamaModelValue(value);
+    checkOllamaModelConnection(value);
+  };
+
+  const handleRefreshModels = () => {
+    fetchOllamaModels();
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Cpu className="h-5 w-5" />
-          Model Selection
+          Ollama Model Selection
         </CardTitle>
         <CardDescription>
-          Choose which AI model to use for processing transcripts
+          Choose which Ollama model to use for processing transcripts
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <Label htmlFor="model-selector">Select Model</Label>
+          <div className="flex justify-between items-center">
+            <Label htmlFor="model-selector">Select Model</Label>
+            <Button variant="ghost" size="sm" onClick={handleRefreshModels}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
+            </Button>
+          </div>
+          
           <Select
-            value={selectedModel}
-            onValueChange={setSelectedModel}
+            value={ollamaModel}
+            onValueChange={handleModelChange}
             disabled={isLoading}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent>
-              {availableModels.map((model) => (
+              {ollamaModels.map((model) => (
                 <SelectItem key={model.value} value={model.value}>
                   {model.label}
                 </SelectItem>
@@ -115,10 +117,13 @@ const ModelSelector: React.FC = () => {
             </div>
           )}
           
-          <div className="text-sm text-muted-foreground mt-2">
-            {apiProvider === 'groq' 
-              ? 'Using Groq API with cloud-hosted models' 
-              : 'Using locally hosted Ollama models'}
+          <div className="flex items-center gap-2 mt-2">
+            <div className={`h-3 w-3 rounded-full ${isOllamaModelConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm">
+              {isOllamaModelConnected 
+                ? `Model ${ollamaModel} is available` 
+                : `Model ${ollamaModel} is not available`}
+            </span>
           </div>
         </div>
       </CardContent>
