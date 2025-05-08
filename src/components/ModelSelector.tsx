@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSettings } from '@/contexts/SettingsContext';
-import { Cpu, RefreshCw } from 'lucide-react';
+import { Cpu, RefreshCw, Plus } from 'lucide-react';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { toast } from 'sonner';
 
 interface ModelOption {
   value: string;
@@ -17,6 +19,8 @@ const ModelSelector: React.FC = () => {
   const [ollamaModels, setOllamaModels] = useState<ModelOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customModelInput, setCustomModelInput] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   // Fetch available Ollama models when component mounts or URL changes
   useEffect(() => {
@@ -51,7 +55,7 @@ const ModelSelector: React.FC = () => {
       console.error('Error fetching Ollama models:', err);
       setError('Could not connect to Ollama server. Please ensure it\'s running.');
       setOllamaModels([
-        { value: 'llama3', label: 'Llama 3 (default)' }
+        { value: 'llama3.1-8b-instant', label: 'Llama 3.1 8B Instant (default)' }
       ]);
     } finally {
       setIsLoading(false);
@@ -59,8 +63,30 @@ const ModelSelector: React.FC = () => {
   };
 
   const handleModelChange = (value: string) => {
-    setOllamaModel(value);
-    checkOllamaConnection(true);
+    if (value === 'custom') {
+      setShowCustomInput(true);
+    } else {
+      setOllamaModel(value);
+      checkOllamaConnection(true);
+      setShowCustomInput(false);
+    }
+  };
+
+  const handleCustomModelSubmit = () => {
+    if (customModelInput.trim()) {
+      setOllamaModel(customModelInput.trim());
+      checkOllamaConnection(true);
+      
+      // Add the custom model to the list if it's not already there
+      if (!ollamaModels.some(model => model.value === customModelInput.trim())) {
+        setOllamaModels([
+          ...ollamaModels,
+          { value: customModelInput.trim(), label: customModelInput.trim() }
+        ]);
+      }
+      setShowCustomInput(false);
+      toast.success(`Model set to ${customModelInput.trim()}`);
+    }
   };
 
   const handleRefreshModels = () => {
@@ -88,22 +114,69 @@ const ModelSelector: React.FC = () => {
             </Button>
           </div>
           
-          <Select
-            value={ollamaModel}
-            onValueChange={handleModelChange}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select model" />
-            </SelectTrigger>
-            <SelectContent>
-              {ollamaModels.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!showCustomInput ? (
+            <>
+              <Select
+                value={ollamaModel}
+                onValueChange={handleModelChange}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ollamaModels.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="llama3.1-8b-instant">Llama 3.1 8B Instant</SelectItem>
+                  <SelectItem value="custom">Custom Model...</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <div className="flex items-center justify-between mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowCustomInput(true)}
+                  className="flex items-center"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Enter Custom Model
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Input
+                placeholder="Enter model name (e.g. llama3.1-8b-instant)"
+                value={customModelInput}
+                onChange={(e) => setCustomModelInput(e.target.value)}
+                className="w-full"
+                autoFocus
+              />
+              <div className="flex space-x-2">
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleCustomModelSubmit}
+                  disabled={!customModelInput.trim()}
+                  className="flex-1"
+                >
+                  Set Model
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowCustomInput(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
           
           {error && (
             <div className="text-sm text-red-500 mt-2">

@@ -14,8 +14,15 @@ const TranscriptForm: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { processTranscript, isProcessing, hasApiConfig } = useAgent();
-  const { isOllamaConnected } = useSettings();
+  const { processTranscript, isProcessing } = useAgent();
+  const { 
+    apiProvider, 
+    isOllamaConnected, 
+    isOllamaModelConnected, 
+    isGroqConnected, 
+    isGroqModelConnected,
+    hasApiConfig
+  } = useSettings();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,11 +36,20 @@ const TranscriptForm: React.FC = () => {
       return;
     }
     
-    // Check Ollama connection
-    if (!isOllamaConnected) {
+    // Check API connection based on selected provider
+    if (apiProvider === 'ollama' && (!isOllamaConnected || !isOllamaModelConnected)) {
       toast({
         title: 'Ollama Connection Error',
-        description: 'Cannot connect to Ollama server. Please check your configuration.',
+        description: 'Cannot connect to Ollama server or model. Please check your configuration.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (apiProvider === 'groq' && (!isGroqConnected || !isGroqModelConnected)) {
+      toast({
+        title: 'Groq API Error',
+        description: 'Cannot connect to Groq API or model. Please check your API key and model.',
         variant: 'destructive',
       });
       return;
@@ -63,7 +79,7 @@ const TranscriptForm: React.FC = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Please configure your Ollama connection before proceeding
+                Please configure your {apiProvider === 'ollama' ? 'Ollama' : 'Groq API'} connection before proceeding
               </p>
             </div>
           </div>
@@ -73,8 +89,9 @@ const TranscriptForm: React.FC = () => {
     );
   }
 
-  // Show warning if not connected to Ollama
-  const showOllamaWarning = !isOllamaConnected;
+  // Show warning if API connection is not working
+  const showApiWarning = (apiProvider === 'ollama' && (!isOllamaConnected || !isOllamaModelConnected)) || 
+                         (apiProvider === 'groq' && (!isGroqConnected || !isGroqModelConnected));
 
   return (
     <form onSubmit={handleSubmit}>
@@ -89,7 +106,7 @@ const TranscriptForm: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {showOllamaWarning && (
+          {showApiWarning && (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
@@ -97,7 +114,9 @@ const TranscriptForm: React.FC = () => {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-yellow-700">
-                    Cannot connect to Ollama server. Please check your configuration in Settings.
+                    {apiProvider === 'ollama' 
+                      ? 'Cannot connect to Ollama server or model. Please check your configuration in Settings.' 
+                      : 'Cannot connect to Groq API or model. Please check your API key and model in Settings.'}
                   </p>
                 </div>
               </div>
@@ -108,14 +127,14 @@ const TranscriptForm: React.FC = () => {
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
             className="min-h-[300px] font-mono text-sm"
-            disabled={isProcessing || showOllamaWarning}
+            disabled={isProcessing || showApiWarning}
           />
         </CardContent>
         <CardFooter className="flex justify-end">
           <Button 
             type="submit" 
             className="px-6 py-2" 
-            disabled={isProcessing || !transcript.trim() || showOllamaWarning}
+            disabled={isProcessing || !transcript.trim() || showApiWarning}
           >
             {isProcessing ? 'Processing...' : 'Process Transcript'} <Send className="ml-2 h-4 w-4" />
           </Button>

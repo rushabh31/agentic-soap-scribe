@@ -33,7 +33,8 @@ const ApiKeyForm: React.FC = () => {
   } = useSettings();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
+  const [customGroqModel, setCustomGroqModel] = useState('');
+  const [showCustomGroqInput, setShowCustomGroqInput] = useState(false);
 
   useEffect(() => {
     checkOllamaConnection();
@@ -46,7 +47,6 @@ const ApiKeyForm: React.FC = () => {
 
   const handleSaveOllamaConfig = async () => {
     setIsLoading(true);
-    setTestResult(null);
     
     try {
       if (!ollamaUrl.trim()) {
@@ -83,9 +83,25 @@ const ApiKeyForm: React.FC = () => {
     }
   };
 
+  const handleGroqModelChange = (value: string) => {
+    if (value === 'custom') {
+      setShowCustomGroqInput(true);
+    } else {
+      setGroqModel(value);
+      setShowCustomGroqInput(false);
+    }
+  };
+
+  const handleCustomGroqModelSubmit = () => {
+    if (customGroqModel.trim()) {
+      setGroqModel(customGroqModel.trim());
+      toast.success(`Groq model set to ${customGroqModel.trim()}`);
+      setShowCustomGroqInput(false);
+    }
+  };
+
   const handleSaveGroqConfig = async () => {
     setIsLoading(true);
-    setTestResult(null);
     
     try {
       if (!groqApiKey.trim()) {
@@ -170,25 +186,20 @@ const ApiKeyForm: React.FC = () => {
             <div className="space-y-2">
               <Label htmlFor="ollamaModel">Ollama Model</Label>
               <div className="flex space-x-2">
-                <Select value={ollamaModel} onValueChange={setOllamaModel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="llama3">Llama 3 (8B)</SelectItem>
-                    <SelectItem value="llama3:latest">Llama 3 (latest)</SelectItem>
-                    <SelectItem value="mistral">Mistral</SelectItem>
-                    <SelectItem value="gemma:7b">Gemma (7B)</SelectItem>
-                    <SelectItem value="phi3:latest">Phi-3 (latest)</SelectItem>
-                    <SelectItem value="codellama">CodeLlama</SelectItem>
-                    <SelectItem value="orca-mini">Orca Mini</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="ollamaModel"
+                  placeholder="llama3.1-8b-instant"
+                  value={ollamaModel}
+                  onChange={(e) => setOllamaModel(e.target.value)}
+                />
                 <div className="w-10 flex items-center justify-center">
                   {isOllamaModelConnected === true && <Check className="h-5 w-5 text-green-500" />}
                   {isOllamaModelConnected === false && <AlertCircle className="h-5 w-5 text-red-500" />}
                 </div>
               </div>
+              <p className="text-xs text-gray-500">
+                Default models: llama3.1-8b-instant, mistral, gemma:7b
+              </p>
             </div>
 
             <Button 
@@ -228,30 +239,65 @@ const ApiKeyForm: React.FC = () => {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="groqModel">Groq Model</Label>
-              <div className="flex space-x-2">
-                <Select value={groqModel} onValueChange={setGroqModel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="llama3-8b-8192">Llama 3 8B</SelectItem>
-                    <SelectItem value="llama3-70b-8192">Llama 3 70B</SelectItem>
-                    <SelectItem value="mixtral-8x7b-32768">Mixtral 8x7B</SelectItem>
-                    <SelectItem value="gemma-7b-it">Gemma 7B</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="w-10 flex items-center justify-center">
-                  {groqApiKey && groqModel && isGroqModelConnected === true && 
-                    <Check className="h-5 w-5 text-green-500" />
-                  }
-                  {groqApiKey && groqModel && isGroqModelConnected === false && 
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                  }
+            {!showCustomGroqInput ? (
+              <div className="space-y-2">
+                <Label htmlFor="groqModel">Groq Model</Label>
+                <div className="flex space-x-2">
+                  <Select value={groqModel} onValueChange={handleGroqModelChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="llama3-8b-8192">Llama 3 8B</SelectItem>
+                      <SelectItem value="llama3-70b-8192">Llama 3 70B</SelectItem>
+                      <SelectItem value="llama3.1-8b-instant">Llama 3.1 8B Instant</SelectItem>
+                      <SelectItem value="llama3.1-70b-instruct">Llama 3.1 70B Instruct</SelectItem>
+                      <SelectItem value="mixtral-8x7b-32768">Mixtral 8x7B</SelectItem>
+                      <SelectItem value="gemma-7b-it">Gemma 7B</SelectItem>
+                      <SelectItem value="custom">Custom Model...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="w-10 flex items-center justify-center">
+                    {groqApiKey && groqModel && isGroqModelConnected === true && 
+                      <Check className="h-5 w-5 text-green-500" />
+                    }
+                    {groqApiKey && groqModel && isGroqModelConnected === false && 
+                      <AlertCircle className="h-5 w-5 text-red-500" />
+                    }
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="customGroqModel">Custom Groq Model</Label>
+                <Input
+                  id="customGroqModel"
+                  placeholder="Enter Groq model name"
+                  value={customGroqModel}
+                  onChange={(e) => setCustomGroqModel(e.target.value)}
+                  autoFocus
+                />
+                <div className="flex space-x-2 mt-2">
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={handleCustomGroqModelSubmit}
+                    disabled={!customGroqModel.trim()}
+                    className="flex-1"
+                  >
+                    Set Model
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowCustomGroqInput(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <Button 
               onClick={handleSaveGroqConfig} 

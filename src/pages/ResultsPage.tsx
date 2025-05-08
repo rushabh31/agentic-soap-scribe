@@ -14,6 +14,41 @@ import {
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
+const UrgencyBadge = ({ urgency }: { urgency: { level: number; reason: string } }) => {
+  const getUrgencyColor = () => {
+    // Convert level to number if it's coming as a string
+    const level = typeof urgency.level === 'string' ? parseInt(urgency.level, 10) : urgency.level;
+    
+    if (level === 3) {
+      return 'bg-red-100 text-red-800 border-red-300';
+    } else if (level === 2) {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    } else {
+      return 'bg-green-100 text-green-800 border-green-300';
+    }
+  };
+
+  const getUrgencyText = () => {
+    // Convert level to number if it's coming as a string
+    const level = typeof urgency.level === 'string' ? parseInt(urgency.level, 10) : urgency.level;
+    
+    if (level === 3) {
+      return 'High';
+    } else if (level === 2) {
+      return 'Medium';
+    } else {
+      return 'Low';
+    }
+  };
+
+  return (
+    <div className={`flex items-center gap-2 ${getUrgencyColor()}`}>
+      <Clock className="h-4 w-4" />
+      <span className="text-sm">{getUrgencyText()}</span>
+    </div>
+  );
+};
+
 const ResultsPage = () => {
   const { state, legacyResult, comparison, evaluationResults, currentAgent, agentInput, agentOutput } = useAgent();
   const navigate = useNavigate();
@@ -242,13 +277,7 @@ const ResultsPage = () => {
                       {state.urgency && (
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Urgency:</span>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            state.urgency.level === "high" ? 'bg-red-100 text-red-800' :
-                            state.urgency.level === "medium" ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {state.urgency.level}
-                          </span>
+                          <UrgencyBadge urgency={state.urgency} />
                         </div>
                       )}
                       

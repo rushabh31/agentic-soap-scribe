@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   checkOllamaIsRunning,
@@ -41,24 +42,31 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [apiProvider, setProviderState] = useState<'ollama' | 'groq'>(() => getApiProvider());
   const [ollamaUrl, setOllamaUrlState] = useState<string>(() => getOllamaUrl());
-  const [ollamaModel, setOllamaModelState] = useState<string>(() => getOllamaModel());
+  const [ollamaModel, setOllamaModelState] = useState<string>(() => getOllamaModel() || 'llama3.1-8b-instant');
   const [groqApiKey, setGroqApiKeyState] = useState<string>(() => getGroqApiKey());
-  const [groqModel, setGroqModelState] = useState<string>(() => getGroqModel());
+  const [groqModel, setGroqModelState] = useState<string>(() => getGroqModel() || 'llama3.1-8b-instant');
   const [isOllamaConnected, setIsOllamaConnected] = useState<boolean | null>(null);
   const [isOllamaModelConnected, setIsOllamaModelConnected] = useState<boolean | null>(null);
   const [isGroqConnected, setIsGroqConnected] = useState<boolean | null>(null);
   const [isGroqModelConnected, setIsGroqModelConnected] = useState<boolean | null>(null);
 
-  // Add computed property for hasApiConfig
-  const hasApiConfig = Boolean(
-    (apiProvider === 'ollama' && ollamaUrl && ollamaModel) || 
-    (apiProvider === 'groq' && groqApiKey && groqModel)
-  );
+  // Compute whether we have a valid API configuration based on the selected provider
+  const hasApiConfig = React.useMemo(() => {
+    if (apiProvider === 'ollama') {
+      return Boolean(ollamaUrl && ollamaModel);
+    } else if (apiProvider === 'groq') {
+      return Boolean(groqApiKey && groqModel);
+    }
+    return false;
+  }, [apiProvider, ollamaUrl, ollamaModel, groqApiKey, groqModel]);
 
   useEffect(() => {
-    checkOllamaConnection();
-    if (groqApiKey) checkGroqConnection();
-  }, []);
+    if (apiProvider === 'ollama') {
+      checkOllamaConnection();
+    } else if (apiProvider === 'groq' && groqApiKey) {
+      checkGroqConnection();
+    }
+  }, [apiProvider, ollamaUrl, ollamaModel, groqApiKey, groqModel]);
 
   const setApiProvider = (provider: 'ollama' | 'groq') => {
     setProviderState(provider);
