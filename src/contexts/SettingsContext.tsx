@@ -1,10 +1,8 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { getApiKey, setApiKey, getApiProvider, setApiProvider, getOllamaUrl, setOllamaUrl, ApiProvider, getOllamaModel, setOllamaModel, testOllamaModelConnection } from '@/services/apiService';
+import { getApiProvider, getOllamaUrl, setOllamaUrl, ApiProvider, getOllamaModel, setOllamaModel, testOllamaModelConnection } from '@/services/apiService';
 
 interface SettingsContextType {
-  apiKey: string;
-  setApiKeyValue: (key: string) => void;
   apiProvider: ApiProvider;
   setApiProviderValue: (provider: ApiProvider) => void;
   ollamaUrl: string;
@@ -24,8 +22,7 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [apiKey, setApiKeyState] = useState<string>('');
-  const [apiProvider, setApiProviderState] = useState<ApiProvider>('groq');
+  const [apiProvider] = useState<ApiProvider>('ollama');
   const [ollamaUrl, setOllamaUrlState] = useState<string>('http://localhost:11434');
   const [ollamaModel, setOllamaModelState] = useState<string>('llama3');
   const [hasApiConfig, setHasApiConfig] = useState<boolean>(false);
@@ -36,18 +33,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   
   // Load settings on initial render
   useEffect(() => {
-    const storedKey = getApiKey();
-    const storedProvider = getApiProvider();
     const storedOllamaUrl = getOllamaUrl();
     const storedOllamaModel = getOllamaModel();
-    
-    if (storedKey) {
-      setApiKeyState(storedKey);
-    }
-    
-    if (storedProvider) {
-      setApiProviderState(storedProvider);
-    }
     
     if (storedOllamaUrl) {
       setOllamaUrlState(storedOllamaUrl);
@@ -57,10 +44,10 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setOllamaModelState(storedOllamaModel);
     }
     
-    updateApiConfigStatus(storedKey, storedProvider, storedOllamaUrl);
+    updateApiConfigStatus(storedOllamaUrl);
     
-    // Check Ollama connection if it's the selected provider
-    if (storedProvider === 'ollama' && storedOllamaUrl) {
+    // Check Ollama connection if URL is available
+    if (storedOllamaUrl) {
       checkOllamaConnection().then(connected => {
         if (connected && storedOllamaModel) {
           checkOllamaModelConnection(storedOllamaModel);
@@ -69,12 +56,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, []);
   
-  const updateApiConfigStatus = (key: string | null, provider: ApiProvider, url: string | null) => {
-    if (provider === 'groq') {
-      setHasApiConfig(!!key);
-    } else if (provider === 'ollama') {
-      setHasApiConfig(!!url);
-    }
+  const updateApiConfigStatus = (url: string | null) => {
+    setHasApiConfig(!!url);
   };
   
   const checkOllamaConnection = async (): Promise<boolean> => {
@@ -139,55 +122,34 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
   
-  const setApiKeyValue = (key: string) => {
-    setApiKey(key);
-    setApiKeyState(key);
-    updateApiConfigStatus(key, apiProvider, ollamaUrl);
-  };
-  
-  const setApiProviderValue = (provider: ApiProvider) => {
-    setApiProvider(provider);
-    setApiProviderState(provider);
-    updateApiConfigStatus(apiKey, provider, ollamaUrl);
-    
-    // Check Ollama connection if switching to Ollama
-    if (provider === 'ollama') {
-      checkOllamaConnection().then(connected => {
-        if (connected) {
-          checkOllamaModelConnection();
-        }
-      });
-    }
+  const setApiProviderValue = (_provider: ApiProvider) => {
+    // No-op as we only use Ollama
   };
   
   const setOllamaUrlValue = (url: string) => {
     setOllamaUrl(url);
     setOllamaUrlState(url);
-    updateApiConfigStatus(apiKey, apiProvider, url);
+    updateApiConfigStatus(url);
     
-    // Check connection with the new URL if in Ollama mode
-    if (apiProvider === 'ollama') {
-      checkOllamaConnection().then(connected => {
-        if (connected) {
-          checkOllamaModelConnection();
-        }
-      });
-    }
+    // Check connection with the new URL
+    checkOllamaConnection().then(connected => {
+      if (connected) {
+        checkOllamaModelConnection();
+      }
+    });
   };
   
   const setOllamaModelValue = (model: string) => {
     setOllamaModel(model);
     setOllamaModelState(model);
     
-    if (apiProvider === 'ollama' && isOllamaConnected) {
+    if (isOllamaConnected) {
       checkOllamaModelConnection(model);
     }
   };
   
   return (
     <SettingsContext.Provider value={{
-      apiKey,
-      setApiKeyValue,
       apiProvider,
       setApiProviderValue,
       ollamaUrl,

@@ -1,12 +1,14 @@
+
 import React from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import TranscriptForm from '@/components/TranscriptForm';
 import ProcessingProgress from '@/components/ProcessingProgress';
 import { useAgent } from '@/contexts/AgentContext';
 import ApiKeyForm from '@/components/ApiKeyForm';
+import SystemArchitecture from '@/components/SystemArchitecture';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Settings } from 'lucide-react';
+import { FileText, Settings, ActivitySquare } from 'lucide-react';
 
 const TranscriptsPage = () => {
   const { isProcessing, hasApiConfig } = useAgent();
@@ -25,7 +27,8 @@ const TranscriptsPage = () => {
         <Tabs defaultValue="transcript" className="mb-6">
           <TabsList>
             <TabsTrigger value="transcript">Submit Transcript</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="settings">Ollama Settings</TabsTrigger>
+            <TabsTrigger value="architecture">System Architecture</TabsTrigger>
           </TabsList>
           
           <TabsContent value="transcript">
@@ -99,12 +102,27 @@ AGENT: Thank you for calling HealthFirst. I hope your knee feels better soon. Ha
               <div>
                 <h3 className="text-lg font-medium flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  AI Configuration
+                  Ollama Configuration
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Configure AI provider and API settings for processing transcripts.
+                  Configure Ollama server URL and model for processing transcripts.
                 </p>
                 <ApiKeyForm />
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="architecture">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                  <ActivitySquare className="h-5 w-5" />
+                  System Architecture
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Visual representation of the multi-agent system workflow.
+                </p>
+                <SystemArchitecture />
               </div>
             </div>
           </TabsContent>

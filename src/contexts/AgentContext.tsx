@@ -19,14 +19,10 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<{ step: number; total: number }>({ step: 0, total: 7 });
   const multiAgentSystem = new MultiAgentSystem();
-  const { hasApiConfig, apiProvider, isOllamaConnected, isOllamaModelConnected } = useSettings();
+  const { hasApiConfig, isOllamaConnected, isOllamaModelConnected } = useSettings();
   
-  // Consider API config valid if:
-  // - For Groq: hasApiConfig is true
-  // - For Ollama: hasApiConfig is true AND isOllamaConnected is true AND isOllamaModelConnected is true
-  const isApiConfigValid = apiProvider === 'groq' ? 
-    hasApiConfig : 
-    (hasApiConfig && isOllamaConnected && isOllamaModelConnected);
+  // Consider API config valid if Ollama is connected and model is available
+  const isApiConfigValid = hasApiConfig && isOllamaConnected && isOllamaModelConnected;
   
   const processTranscript = async (transcript: string): Promise<AgentState> => {
     setIsProcessing(true);

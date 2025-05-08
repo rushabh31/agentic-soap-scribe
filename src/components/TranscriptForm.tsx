@@ -15,7 +15,7 @@ const TranscriptForm: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { processTranscript, isProcessing, hasApiConfig } = useAgent();
-  const { apiProvider, isOllamaConnected } = useSettings();
+  const { isOllamaConnected } = useSettings();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +29,8 @@ const TranscriptForm: React.FC = () => {
       return;
     }
     
-    // Check Ollama connection if using Ollama
-    if (apiProvider === 'ollama' && !isOllamaConnected) {
+    // Check Ollama connection
+    if (!isOllamaConnected) {
       toast({
         title: 'Ollama Connection Error',
         description: 'Cannot connect to Ollama server. Please check your configuration.',
@@ -63,7 +63,7 @@ const TranscriptForm: React.FC = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Please configure your AI provider before proceeding
+                Please configure your Ollama connection before proceeding
               </p>
             </div>
           </div>
@@ -73,8 +73,8 @@ const TranscriptForm: React.FC = () => {
     );
   }
 
-  // Show warning if using Ollama but not connected
-  const showOllamaWarning = apiProvider === 'ollama' && !isOllamaConnected;
+  // Show warning if not connected to Ollama
+  const showOllamaWarning = !isOllamaConnected;
 
   return (
     <form onSubmit={handleSubmit}>

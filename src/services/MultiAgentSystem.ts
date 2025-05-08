@@ -13,7 +13,6 @@ import { ClinicalAccuracyAgent } from './agents/evaluators/ClinicalAccuracyAgent
 import { CompletenessAgent } from './agents/evaluators/CompletenessAgent';
 import { ActionabilityAgent } from './agents/evaluators/ActionabilityAgent';
 import { toast } from 'sonner';
-import { getApiProvider } from './apiService';
 
 export class MultiAgentSystem {
   private routingAgent: RoutingAgent;
@@ -54,12 +53,9 @@ export class MultiAgentSystem {
       messages: []
     };
     
-    const provider = getApiProvider();
-    const providerName = provider === 'groq' ? 'Groq' : 'Ollama';
-    
     try {
       // Step 1: Route the call
-      toast.info(`Routing call using ${providerName}...`);
+      toast.info("Routing call using Ollama...");
       if (progressCallback) progressCallback(state, 1, 7);
       state = await this.routingAgent.process(state);
       
