@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { getApiKey, setApiKey, getApiProvider, setApiProvider, getOllamaUrl, setOllamaUrl, ApiProvider, getOllamaModel, setOllamaModel } from '@/services/apiService';
+import { getApiKey, setApiKey, getApiProvider, setApiProvider, getOllamaUrl, setOllamaUrl, ApiProvider, getOllamaModel, setOllamaModel, testOllamaModelConnection } from '@/services/apiService';
 
 interface SettingsContextType {
   apiKey: string;
@@ -14,8 +14,11 @@ interface SettingsContextType {
   hasApiConfig: boolean;
   isOllamaConnected: boolean;
   isOllamaModelConnected: boolean;
+  testResponse: string | null;
   checkOllamaConnection: () => Promise<boolean>;
   checkOllamaModelConnection: (model?: string) => Promise<boolean>;
+  testOllamaModel: (model: string) => Promise<string>;
+  isTestingModel: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -28,6 +31,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [hasApiConfig, setHasApiConfig] = useState<boolean>(false);
   const [isOllamaConnected, setIsOllamaConnected] = useState<boolean>(false);
   const [isOllamaModelConnected, setIsOllamaModelConnected] = useState<boolean>(false);
+  const [testResponse, setTestResponse] = useState<string | null>(null);
+  const [isTestingModel, setIsTestingModel] = useState<boolean>(false);
   
   // Load settings on initial render
   useEffect(() => {
@@ -115,6 +120,24 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       return false;
     }
   };
+
+  const testOllamaModel = async (modelName: string): Promise<string> => {
+    setIsTestingModel(true);
+    setTestResponse(null);
+    
+    try {
+      const response = await testOllamaModelConnection(ollamaUrl, modelName);
+      setTestResponse(response);
+      setIsOllamaModelConnected(true);
+      return response;
+    } catch (error) {
+      console.error('Error testing Ollama model:', error);
+      setIsOllamaModelConnected(false);
+      throw error;
+    } finally {
+      setIsTestingModel(false);
+    }
+  };
   
   const setApiKeyValue = (key: string) => {
     setApiKey(key);
@@ -174,8 +197,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       hasApiConfig,
       isOllamaConnected,
       isOllamaModelConnected,
+      testResponse,
       checkOllamaConnection,
-      checkOllamaModelConnection
+      checkOllamaModelConnection,
+      testOllamaModel,
+      isTestingModel
     }}>
       {children}
     </SettingsContext.Provider>

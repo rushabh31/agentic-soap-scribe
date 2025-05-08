@@ -68,6 +68,39 @@ export const callApi = async (
   throw new Error('Invalid API provider');
 };
 
+// Test the connection to Ollama by generating a simple response
+export const testOllamaModelConnection = async (url: string, model: string): Promise<string> => {
+  try {
+    const response = await fetch(`${url}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{
+          role: 'user',
+          content: 'Generate a short test response to verify the connection.'
+        }],
+        options: {
+          temperature: 0.2
+        },
+        stream: false
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.message.content;
+  } catch (error) {
+    console.error('Error testing Ollama model connection:', error);
+    throw error;
+  }
+};
+
 const callGroqAPI = async (
   messages: ApiMessage[],
   model: string = 'llama-3.1-8b-instant'

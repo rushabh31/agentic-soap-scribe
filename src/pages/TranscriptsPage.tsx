@@ -1,19 +1,15 @@
-
 import React from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import TranscriptForm from '@/components/TranscriptForm';
 import ProcessingProgress from '@/components/ProcessingProgress';
 import { useAgent } from '@/contexts/AgentContext';
 import ApiKeyForm from '@/components/ApiKeyForm';
-import ModelSelector from '@/components/ModelSelector';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Settings } from 'lucide-react';
-import { useSettings } from '@/contexts/SettingsContext';
 
 const TranscriptsPage = () => {
   const { isProcessing, hasApiConfig } = useAgent();
-  const { apiProvider, isOllamaConnected } = useSettings();
   
   return (
     <PageLayout>
@@ -110,15 +106,6 @@ AGENT: Thank you for calling HealthFirst. I hope your knee feels better soon. Ha
                 </p>
                 <ApiKeyForm />
               </div>
-              
-              {hasApiConfig && apiProvider === 'ollama' && isOllamaConnected && (
-                <>
-                  <Separator />
-                  <div>
-                    <ModelSelector />
-                  </div>
-                </>
-              )}
             </div>
           </TabsContent>
         </Tabs>
