@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,7 +101,6 @@ const ApiKeyForm: React.FC = () => {
     const providerValue = value as ApiProvider;
     setInputProvider(providerValue);
     setTestError(null);
-    setTestResponse(null);
     
     // Check Ollama connection when switching to Ollama
     if (providerValue === 'ollama' && inputOllamaUrl) {
