@@ -3,18 +3,16 @@ import React, { useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { OllamaModelName, GroqModelName } from '@/contexts/SettingsContext';
 
 const ModelSelector = () => {
   const { 
     apiProvider, 
-    useAdvancedSettings,
     ollamaModel,
     setOllamaModel,
     groqModel,
     setGroqModel,
-    checkOllamaModelConnection,
-    checkGroqModelConnection
+    isOllamaModelConnected,
+    isGroqModelConnected
   } = useSettings();
   
   const [customOllamaModel, setCustomOllamaModel] = useState<string>(ollamaModel || '');
@@ -23,19 +21,13 @@ const ModelSelector = () => {
   const handleOllamaModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setCustomOllamaModel(value);
-    setOllamaModel(value as OllamaModelName);
-    if (value) {
-      checkOllamaModelConnection(value);
-    }
+    setOllamaModel(value);
   };
 
   const handleGroqModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setCustomGroqModel(value);
-    setGroqModel(value as GroqModelName);
-    if (value) {
-      checkGroqModelConnection(value);
-    }
+    setGroqModel(value);
   };
 
   return (
@@ -62,13 +54,11 @@ const ModelSelector = () => {
         />
       )}
       
-      {useAdvancedSettings && (
-        <p className="text-xs text-gray-500 mt-1">
-          {apiProvider === 'ollama' 
-            ? 'Specify the exact model name to use with Ollama' 
-            : 'Specify the exact model name to use with Groq API'}
-        </p>
-      )}
+      <p className="text-xs text-gray-500 mt-1">
+        {apiProvider === 'ollama' 
+          ? `${isOllamaModelConnected ? '✓ Connected' : 'Specify the exact model name to use with Ollama'}` 
+          : `${isGroqModelConnected ? '✓ Connected' : 'Specify the exact model name to use with Groq API'}`}
+      </p>
     </div>
   );
 };

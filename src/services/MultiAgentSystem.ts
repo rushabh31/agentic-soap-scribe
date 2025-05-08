@@ -2,11 +2,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState } from '@/types/agent';
 import { toast } from 'sonner';
-import { RoutingAgent } from './langchain/RoutingAgent';
-import { SentimentAnalysisEngine } from './langchain/SentimentAnalysisEngine';
-import { UrgencyAnalysisEngine } from './langchain/UrgencyAnalysisEngine';
-import { MedicalInformationExtractor } from './langchain/MedicalInformationExtractor';
-import { SOAPGenerator } from './langchain/SOAPGenerator';
+import { RoutingAgent } from './mastra/RoutingAgent';
+import { SentimentAnalysisEngine } from './mastra/SentimentAnalysisEngine';
+import { UrgencyAnalysisEngine } from './mastra/UrgencyAnalysisEngine';
+import { MedicalInformationExtractor } from './mastra/MedicalInformationExtractor';
+import { SOAPGenerator } from './mastra/SOAPGenerator';
 import { ClinicalAccuracyAgent } from './agents/evaluators/ClinicalAccuracyAgent';
 import { CompletenessAgent } from './agents/evaluators/CompletenessAgent';
 import { ActionabilityAgent } from './agents/evaluators/ActionabilityAgent';
