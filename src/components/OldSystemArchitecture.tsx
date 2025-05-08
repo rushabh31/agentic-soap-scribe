@@ -84,9 +84,9 @@ const OldSystemArchitecture: React.FC = () => {
           {/* Sentiment Analysis */}
           <rect x="700" y="350" width="200" height="120" rx="8" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="2" />
           <text x="800" y="370" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#334155">Sentiment Scale</text>
-          <text x="800" y="395" textAnchor="middle" fontSize="12" fill="#475569">Satisfied: > 0.3</text>
+          <text x="800" y="395" textAnchor="middle" fontSize="12" fill="#475569">Satisfied: {'>'}0.3</text>
           <text x="800" y="415" textAnchor="middle" fontSize="12" fill="#475569">Neutral: -0.3 to 0.3</text>
-          <text x="800" y="435" textAnchor="middle" fontSize="12" fill="#475569">Dissatisfied: < -0.3</text>
+          <text x="800" y="435" textAnchor="middle" fontSize="12" fill="#475569">Dissatisfied: {'<'}-0.3</text>
           <text x="800" y="455" textAnchor="middle" fontSize="12" fill="#475569">Based on custom healthcare model</text>
           
           {/* Connector lines */}
