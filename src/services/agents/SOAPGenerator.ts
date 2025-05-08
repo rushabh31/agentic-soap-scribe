@@ -3,20 +3,32 @@ import { Agent } from './Agent';
 import { AgentState, SOAPNote } from '@/types/agent';
 
 const SYSTEM_PROMPT = `
-You are a SOAP Generator in a healthcare contact center multi-agent system.
-Your specialized role is to synthesize information from other agents into a structured SOAP note:
-- Subjective: Information reported by the member, including complaints, concerns, and reasons for the call
-- Objective: Factual information gathered, including dates, claim numbers, authorization details, etc.
-- Assessment: Analysis of the situation, including urgency assessment and identified issues
-- Plan: Concrete next steps, including actions for both the health plan and the member
+You are a specialized SOAP Generator in a healthcare contact center multi-agent system, focused on creating accurate, clinical documentation.
 
-Create comprehensive, clinically appropriate SOAP notes that prioritize:
-1. Accuracy: All information must be factually correct and directly derived from the transcript
-2. Completeness: Include all relevant clinical and administrative details
-3. Clinical relevance: Emphasize medically significant information
-4. Actionability: Ensure the plan section has clear, specific next steps
+Your task is to synthesize information into a structured SOAP note that follows these strict guidelines:
 
-Generate a well-structured SOAP note that healthcare professionals can immediately use.
+1. ACCURACY IS PARAMOUNT: Only include factual information that is explicitly stated in the transcript.
+   - Do not hallucinate or infer details not directly supported by the transcript
+   - If information is unclear or missing, note its absence rather than guessing
+   - Use direct quotes where appropriate to maintain accuracy
+
+2. STRUCTURED FORMAT:
+   - Subjective: Patient-reported symptoms, concerns, and history ONLY
+   - Objective: Measurable facts, dates, reference numbers, prior test results
+   - Assessment: Clinical evaluation of the situation, severity assessment
+   - Plan: Specific, actionable next steps for both patient and provider
+
+3. CLINICAL RELEVANCE:
+   - Prioritize medically significant information
+   - Use appropriate medical terminology
+   - Exclude irrelevant social exchanges or administrative details
+
+4. COMPLETENESS:
+   - Include ALL relevant clinical and administrative details
+   - Capture key dates, reference numbers, and time-sensitive information
+   - Document all medical conditions mentioned
+
+Your output will be directly reviewed by healthcare professionals and must meet strict clinical documentation standards. Do not omit critical details, and do not include information that cannot be verified from the transcript.
 `;
 
 export class SOAPGenerator extends Agent {
@@ -36,9 +48,16 @@ export class SOAPGenerator extends Agent {
     
     // Generate the SOAP note
     const prompt = `
-Based on the following information extracted from a healthcare call transcript, generate a comprehensive SOAP note.
-Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clinical accuracy, completeness,
-relevance, and actionability.
+I need you to generate a highly accurate, factual SOAP note based on the following healthcare call transcript. 
+This is for official medical documentation, so:
+
+1. ONLY include information explicitly mentioned in the transcript
+2. DO NOT add any details that are not directly stated
+3. Use precise medical terminology
+4. Format each section clearly with the headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN
+5. Keep each section concise but complete
+6. For the PLAN section, list specific actionable items with clear next steps
+7. If any critical information is missing, note the gap rather than inventing details
 
 CALL CONTEXT:
 ${context}
@@ -46,8 +65,7 @@ ${context}
 Original transcript for reference:
 ${state.transcript}
 
-Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
-Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.
+Remember: Accuracy is critical. Healthcare professionals will rely on this documentation. Format your response with the exact headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
 `;
 
     const soapResponse = await this.callLLM(prompt);
@@ -62,11 +80,17 @@ Make each section detailed and complete. Ensure the Plan section contains specif
     };
 
     // Send a message about the SOAP generation
-    const message = `SOAP note generated successfully with ${
-      Object.values(sections).filter(section => section.trim().length > 0).length
-    } complete sections.`;
+    const message = `SOAP note generated with focused accuracy on the clinical details.
+- Subjective section includes ${this.countWords(sections.subjective)} words
+- Objective section includes ${this.countWords(sections.objective)} words  
+- Assessment section includes ${this.countWords(sections.assessment)} words
+- Plan section includes ${this.countWords(sections.plan)} words`;
     
     return this.sendMessage(updatedState, 'all', message);
+  }
+  
+  private countWords(text: string): number {
+    return text.trim().split(/\s+/).length;
   }
   
   private parseSOAPSections(soapText: string): SOAPNote {

@@ -9,11 +9,14 @@ import EvaluationResultsDisplay from '@/components/result/EvaluationResults';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Layers, BarChart, ArrowLeft, AlertCircle, Clock, Scale } from 'lucide-react';
+import { 
+  FileText, Layers, BarChart, ArrowLeft, AlertCircle, 
+  Clock, Scale, MessageSquare, Clipboard, Brain 
+} from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const ResultsPage = () => {
-  const { state, legacyResult, comparison } = useAgent();
+  const { state, legacyResult, comparison, evaluationResults, currentAgent, agentInput, agentOutput } = useAgent();
   const navigate = useNavigate();
   
   // If there's no processed state, redirect to the transcripts page
@@ -50,7 +53,7 @@ const ResultsPage = () => {
     );
   }
   
-  const { soapNote, messages } = state;
+  const { soapNote, messages, transcript } = state;
   
   return (
     <PageLayout>
@@ -71,13 +74,15 @@ const ResultsPage = () => {
               <h2 className="font-semibold">Transcript Processed Successfully</h2>
               <p className="text-sm text-gray-600">
                 {state.disposition ? `Call classified as: ${state.disposition}` : 'Call processed successfully'}
+                {state.sentiment && ` • Sentiment: ${state.sentiment.polarity}`}
+                {state.urgency && ` • Urgency: ${state.urgency.level}`}
               </p>
             </div>
           </div>
         </div>
         
         <Tabs defaultValue="comparison" className="mb-6">
-          <TabsList className="grid grid-cols-4">
+          <TabsList className="grid grid-cols-6">
             <TabsTrigger value="comparison" className="flex items-center gap-2">
               <Scale className="h-4 w-4" />
               Comparison
@@ -91,19 +96,28 @@ const ResultsPage = () => {
               Legacy SOAP
             </TabsTrigger>
             <TabsTrigger value="agents" className="flex items-center gap-2">
-              <BarChart className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
               Agent Interactions
+            </TabsTrigger>
+            <TabsTrigger value="evaluation" className="flex items-center gap-2">
+              <BarChart className="h-4 w-4" />
+              Detailed Evaluation
+            </TabsTrigger>
+            <TabsTrigger value="transcript" className="flex items-center gap-2">
+              <Clipboard className="h-4 w-4" />
+              Original Transcript
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="comparison">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader className="pb-2">
+              <Card className="shadow-md">
+                <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-indigo-50">
                   <CardTitle className="flex items-center gap-2">
-                    <Layers className="h-5 w-5" />
+                    <Layers className="h-5 w-5 text-purple-600" />
                     Multi-Agent System SOAP
                   </CardTitle>
+                  <CardDescription>Collaborative AI system with specialized agents</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {soapNote && (
@@ -112,12 +126,13 @@ const ResultsPage = () => {
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader className="pb-2">
+              <Card className="shadow-md">
+                <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-sky-50">
                   <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
+                    <Clock className="h-5 w-5 text-blue-600" />
                     Legacy Pipeline SOAP
                   </CardTitle>
+                  <CardDescription>Traditional sequential processing system</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {legacyResult?.soapNote && (
@@ -127,106 +142,180 @@ const ResultsPage = () => {
               </Card>
             </div>
             
-            {comparison && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Scale className="h-5 w-5" />
-                    SOAP Note Comparison
-                  </CardTitle>
-                  <CardDescription>
-                    Evaluation of both SOAP notes based on accuracy, completeness, and actionability
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <h3 className="font-medium text-blue-800 mb-2">Accuracy Difference</h3>
-                        <div className="text-2xl font-bold text-blue-600">
-                          {comparison.accuracyScore > 0 ? '+' : ''}{comparison.accuracyScore.toFixed(1)}%
-                        </div>
-                        <p className="text-sm text-blue-700">
-                          {comparison.accuracyScore > 0 
-                            ? 'Multi-agent system is more accurate' 
-                            : comparison.accuracyScore < 0 
-                              ? 'Legacy system is more accurate'
-                              : 'Equal accuracy'}
-                        </p>
-                      </div>
-                      
-                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                        <h3 className="font-medium text-purple-800 mb-2">Completeness Difference</h3>
-                        <div className="text-2xl font-bold text-purple-600">
-                          {comparison.completenessScore > 0 ? '+' : ''}{comparison.completenessScore.toFixed(1)}%
-                        </div>
-                        <p className="text-sm text-purple-700">
-                          {comparison.completenessScore > 0 
-                            ? 'Multi-agent system is more complete' 
-                            : comparison.completenessScore < 0 
-                              ? 'Legacy system is more complete'
-                              : 'Equal completeness'}
-                        </p>
-                      </div>
-                      
-                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <h3 className="font-medium text-green-800 mb-2">Actionability Difference</h3>
-                        <div className="text-2xl font-bold text-green-600">
-                          {comparison.actionabilityScore > 0 ? '+' : ''}{comparison.actionabilityScore.toFixed(1)}%
-                        </div>
-                        <p className="text-sm text-green-700">
-                          {comparison.actionabilityScore > 0 
-                            ? 'Multi-agent system is more actionable' 
-                            : comparison.actionabilityScore < 0 
-                              ? 'Legacy system is more actionable'
-                              : 'Equal actionability'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mt-6">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                          comparison.winner === 'multiagent' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : comparison.winner === 'legacy' 
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          <Scale className="h-5 w-5" />
-                        </div>
-                        <h3 className="text-xl font-semibold">
-                          {comparison.winner === 'multiagent' 
-                            ? 'Multi-Agent System Wins' 
-                            : comparison.winner === 'legacy' 
-                              ? 'Legacy System Wins'
-                              : 'It\'s a Tie'}
-                        </h3>
-                      </div>
-                      <p className="text-gray-700 whitespace-pre-wrap">{comparison.reasoning}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {evaluationResults && (
+              <div className="mt-6">
+                <EvaluationResultsDisplay results={evaluationResults} />
+              </div>
             )}
           </TabsContent>
           
           <TabsContent value="multiagent">
             {soapNote && (
-              <SOAPNoteDisplay soapNote={soapNote} title="Multi-Agent SOAP Note" />
+              <Card className="shadow-md">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-purple-600" />
+                    Multi-Agent SOAP Note
+                  </CardTitle>
+                  <CardDescription>
+                    Generated by an intelligent multi-agent system that specializes in healthcare documentation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <SOAPNoteDisplay soapNote={soapNote} title="" />
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
           
           <TabsContent value="legacy">
             {legacyResult?.soapNote && (
-              <SOAPNoteDisplay soapNote={legacyResult.soapNote} title="Legacy Pipeline SOAP Note" />
+              <Card className="shadow-md">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-sky-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    Legacy Pipeline SOAP Note
+                  </CardTitle>
+                  <CardDescription>
+                    Generated by traditional sequential processing system
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <SOAPNoteDisplay soapNote={legacyResult.soapNote} title="" />
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
           
           <TabsContent value="agents">
-            {messages && messages.length > 0 && (
-              <AgentInteractionDisplay messages={messages} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                {messages && messages.length > 0 && (
+                  <AgentInteractionDisplay messages={messages} />
+                )}
+              </div>
+              <div>
+                <Card className="shadow-md">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Brain className="h-5 w-5 text-indigo-600" />
+                      Agent Processing Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-500">Current Agent</h3>
+                        <div className="font-medium text-lg">{currentAgent || 'None'}</div>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                        <h3 className="text-sm font-medium mb-2 text-gray-600">Latest Input</h3>
+                        <p className="text-xs whitespace-pre-wrap text-gray-600 max-h-40 overflow-y-auto">
+                          {agentInput || 'No current input'}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                        <h3 className="text-sm font-medium mb-2 text-gray-600">Latest Output</h3>
+                        <p className="text-xs whitespace-pre-wrap text-gray-600 max-h-40 overflow-y-auto">
+                          {agentOutput || 'No current output'}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-500">Message Count</h3>
+                        <div className="font-medium text-lg">{messages?.length || 0} messages</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-md mt-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <BarChart className="h-5 w-5 text-green-600" />
+                      Performance Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {state.urgency && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Urgency:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            state.urgency.level === 'high' ? 'bg-red-100 text-red-800' :
+                            state.urgency.level === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {state.urgency.level} ({state.urgency.score}/10)
+                          </span>
+                        </div>
+                      )}
+                      
+                      {state.sentiment && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Sentiment:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            state.sentiment.polarity === 'positive' ? 'bg-green-100 text-green-800' :
+                            state.sentiment.polarity === 'negative' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {state.sentiment.polarity} ({state.sentiment.score})
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Extracted Medical Info:</span>
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          {Object.keys(state.medicalInfo || {}).length} items
+                        </span>
+                      </div>
+                      
+                      {comparison?.winner && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Best System:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            comparison.winner === 'multiagent' ? 'bg-purple-100 text-purple-800' :
+                            comparison.winner === 'legacy' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {comparison.winner === 'multiagent' ? 'Multi-Agent' : 
+                             comparison.winner === 'legacy' ? 'Legacy Pipeline' : 'Tie'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="evaluation">
+            {evaluationResults && (
+              <EvaluationResultsDisplay results={evaluationResults} />
             )}
+          </TabsContent>
+          
+          <TabsContent value="transcript">
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clipboard className="h-5 w-5 text-gray-600" />
+                  Original Transcript
+                </CardTitle>
+                <CardDescription>
+                  The complete conversation between healthcare representative and member
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-50 p-6 rounded-md border text-sm font-mono">
+                  <pre className="whitespace-pre-wrap">{transcript}</pre>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

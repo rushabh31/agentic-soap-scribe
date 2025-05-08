@@ -1,315 +1,275 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useSettings } from '@/contexts/SettingsContext';
-import { CheckCircle, Server, RefreshCw } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ApiProvider } from '@/services/apiService';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/use-toast';
+import { ModelSelector } from '@/components/ModelSelector';
+import { useSettings } from '@/contexts/SettingsContext';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, Check, Loader2 } from 'lucide-react';
 
 const ApiKeyForm: React.FC = () => {
+  const { toast } = useToast();
   const { 
+    apiProvider, 
+    setApiProvider,
     ollamaUrl, 
-    setOllamaUrlValue,
-    ollamaModel,
-    setOllamaModelValue,
-    hasApiConfig,
+    setOllamaUrl,
+    ollamaModel, 
+    setOllamaModel,
+    groqApiKey,
+    setGroqApiKey,
+    groqModel,
+    setGroqModel,
     isOllamaConnected,
     isOllamaModelConnected,
-    testResponse,
+    isGroqConnected,
+    isGroqModelConnected,
     checkOllamaConnection,
-    testOllamaModel,
-    isTestingModel
+    checkGroqConnection
   } = useSettings();
   
-  const [inputOllamaUrl, setInputOllamaUrl] = useState(ollamaUrl);
-  const [inputOllamaModel, setInputOllamaModel] = useState(ollamaModel);
-  const [isEditing, setIsEditing] = useState(!hasApiConfig);
-  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
-  const [ollamaModels, setOllamaModels] = useState<{ value: string; label: string }[]>([]);
-  const [testError, setTestError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
-  // Check Ollama connection when component mounts
   useEffect(() => {
-    if (inputOllamaUrl) {
-      checkOllamaStatus();
-    }
+    checkOllamaConnection();
+    if (groqApiKey) checkGroqConnection();
   }, []);
 
-  // Fetch Ollama models when connected
-  useEffect(() => {
-    if (isOllamaConnected) {
-      fetchOllamaModels();
-    }
-  }, [isOllamaConnected, inputOllamaUrl]);
-
-  const checkOllamaStatus = async () => {
-    setIsCheckingConnection(true);
-    await checkOllamaConnection();
-    setIsCheckingConnection(false);
+  const handleApiProviderChange = (value: string) => {
+    setApiProvider(value as 'ollama' | 'groq');
   };
 
-  const fetchOllamaModels = async () => {
-    if (!inputOllamaUrl) return;
+  const handleSaveOllamaConfig = async () => {
+    setIsLoading(true);
+    setTestResult(null);
     
     try {
-      const response = await fetch(`${inputOllamaUrl}/api/tags`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch Ollama models');
+      if (!ollamaUrl.trim()) {
+        toast({
+          title: "URL Required",
+          description: "Please enter the Ollama API URL",
+          variant: "destructive",
+        });
+        return;
       }
-      
-      const data = await response.json();
-      
-      if (data.models) {
-        const formattedModels = data.models.map((model: any) => ({
-          value: model.name,
-          label: model.name
-        }));
-        setOllamaModels(formattedModels);
+
+      if (!ollamaModel.trim()) {
+        toast({
+          title: "Model Required",
+          description: "Please select an Ollama model",
+          variant: "destructive",
+        });
+        return;
       }
-    } catch (err) {
-      console.error('Error fetching Ollama models:', err);
-      setOllamaModels([
-        { value: 'llama3', label: 'Llama 3 (default)' }
-      ]);
-    }
-  };
 
-  const handleSave = () => {
-    setOllamaUrlValue(inputOllamaUrl);
-    setOllamaModelValue(inputOllamaModel);
-    setIsEditing(false);
-  };
-
-  const handleTestModel = async () => {
-    setTestError(null);
-    
-    try {
-      await testOllamaModel(inputOllamaModel);
+      await checkOllamaConnection(true);
+      toast({
+        title: "Connection Successful",
+        description: `Connected to Ollama at ${ollamaUrl} with model ${ollamaModel}`,
+      });
     } catch (error) {
-      setTestError(`Failed to connect to Ollama model: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast({
+        title: "Connection Failed",
+        description: error instanceof Error ? error.message : "Failed to connect to Ollama server",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const isConfigValid = () => {
-    return !!inputOllamaUrl.trim() && !!inputOllamaModel.trim() && isOllamaModelConnected;
-  };
+  const handleSaveGroqConfig = async () => {
+    setIsLoading(true);
+    setTestResult(null);
+    
+    try {
+      if (!groqApiKey.trim()) {
+        toast({
+          title: "API Key Required",
+          description: "Please enter your Groq API key",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  const getConnectionStatusDot = () => {
-    if (isCheckingConnection) {
-      return (
-        <div className="flex items-center gap-2 text-sm">
-          <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-          <span>Checking connection...</span>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="flex items-center gap-2 text-sm mt-2">
-        <div className={`h-3 w-3 rounded-full ${isOllamaConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-        <span>{isOllamaConnected ? 'Connected to Ollama' : 'Cannot connect to Ollama'}</span>
-      </div>
-    );
-  };
+      if (!groqModel.trim()) {
+        toast({
+          title: "Model Required",
+          description: "Please select a Groq model",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  const getModelStatusDot = () => {
-    if (!isOllamaConnected) return null;
-    
-    if (isTestingModel) {
-      return (
-        <div className="flex items-center gap-2 text-sm mt-2">
-          <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-          <span>Testing model...</span>
-        </div>
-      );
+      await checkGroqConnection(true);
+      toast({
+        title: "Connection Successful",
+        description: `Connected to Groq API with model ${groqModel}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Connection Failed",
+        description: error instanceof Error ? error.message : "Failed to connect to Groq API",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (testError) {
-      return (
-        <div className="flex items-center gap-2 text-sm mt-2">
-          <div className="h-3 w-3 rounded-full bg-red-500"></div>
-          <span>Model test failed</span>
-        </div>
-      );
-    }
-    
-    if (testResponse) {
-      return (
-        <div className="flex items-center gap-2 text-sm mt-2">
-          <div className="h-3 w-3 rounded-full bg-green-500"></div>
-          <span>Model test successful</span>
-        </div>
-      );
-    }
-    
-    return null;
   };
-
-  if (!isEditing && hasApiConfig) {
-    return (
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            Ollama Configuration Complete
-          </CardTitle>
-          <CardDescription>
-            Your Ollama configuration is saved in your browser's local storage.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">            
-            <div className="flex items-center gap-2 mt-2">
-              <div className={`h-3 w-3 rounded-full ${isOllamaConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-sm">{isOllamaConnected ? 'Connected to Ollama' : 'Cannot connect to Ollama'}</span>
-              {!isOllamaConnected && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="ml-2" 
-                  onClick={checkOllamaStatus}
-                >
-                  Retry
-                </Button>
-              )}
-            </div>
-            
-            {isOllamaConnected && (
-              <div className="flex items-center gap-2 mt-2">
-                <div className={`h-3 w-3 rounded-full ${isOllamaModelConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-sm">
-                  {isOllamaModelConnected 
-                    ? `Model "${ollamaModel}" is ready` 
-                    : `Model "${ollamaModel}" is not available`}
-                </span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={() => setIsEditing(true)}>
-            Change Configuration
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  }
 
   return (
-    <Card className="max-w-md mx-auto">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Server className="h-5 w-5" />
-          Configure Ollama
-        </CardTitle>
+        <CardTitle>LLM Configuration</CardTitle>
         <CardDescription>
-          Configure your Ollama instance for processing transcripts.
+          Configure your LLM provider settings for processing healthcare transcripts
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <Label>Choose API Provider</Label>
+          <RadioGroup 
+            value={apiProvider} 
+            onValueChange={handleApiProviderChange}
+            className="flex space-x-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="ollama" id="ollama" />
+              <Label htmlFor="ollama">Ollama (Local)</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="groq" id="groq" />
+              <Label htmlFor="groq">Groq Cloud API</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {apiProvider === 'ollama' ? (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="ollamaUrl" className="flex items-center gap-2">
-                <Server className="h-4 w-4" /> Ollama URL
-              </Label>
-              <Input
-                id="ollamaUrl"
-                placeholder="http://localhost:11434"
-                value={inputOllamaUrl}
-                onChange={(e) => setInputOllamaUrl(e.target.value)}
-              />
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-muted-foreground">
-                  Ollama must be running locally or accessible at the URL above
+              <Label htmlFor="ollamaUrl">Ollama Server URL</Label>
+              <div className="flex space-x-2">
+                <Input
+                  id="ollamaUrl"
+                  placeholder="http://localhost:11434"
+                  value={ollamaUrl}
+                  onChange={(e) => setOllamaUrl(e.target.value)}
+                />
+                <div className="w-10 flex items-center justify-center">
+                  {isOllamaConnected === true && <Check className="h-5 w-5 text-green-500" />}
+                  {isOllamaConnected === false && <AlertCircle className="h-5 w-5 text-red-500" />}
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={checkOllamaStatus}
-                  disabled={isCheckingConnection || !inputOllamaUrl.trim()}
-                >
-                  Test Connection
-                </Button>
               </div>
-              {getConnectionStatusDot()}
             </div>
 
-            {isOllamaConnected && (
-              <div className="space-y-2">
-                <Label htmlFor="ollamaModel">Select Model</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={inputOllamaModel}
-                    onValueChange={(value) => setInputOllamaModel(value)}
-                    disabled={!isOllamaConnected || ollamaModels.length === 0}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select Ollama model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ollamaModels.map((model) => (
-                        <SelectItem key={model.value} value={model.value}>
-                          {model.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    variant="outline"
-                    onClick={fetchOllamaModels}
-                    disabled={!isOllamaConnected}
-                    size="icon"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+            <div className="space-y-2">
+              <Label htmlFor="ollamaModel">Ollama Model</Label>
+              <div className="flex space-x-2">
+                <Select value={ollamaModel} onValueChange={setOllamaModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="llama3">Llama 3 (8B)</SelectItem>
+                    <SelectItem value="llama3:latest">Llama 3 (latest)</SelectItem>
+                    <SelectItem value="mistral">Mistral</SelectItem>
+                    <SelectItem value="gemma:7b">Gemma (7B)</SelectItem>
+                    <SelectItem value="phi3:latest">Phi-3 (latest)</SelectItem>
+                    <SelectItem value="codellama">CodeLlama</SelectItem>
+                    <SelectItem value="orca-mini">Orca Mini</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="w-10 flex items-center justify-center">
+                  {isOllamaModelConnected === true && <Check className="h-5 w-5 text-green-500" />}
+                  {isOllamaModelConnected === false && <AlertCircle className="h-5 w-5 text-red-500" />}
                 </div>
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">
-                    Select a model from your local Ollama instance
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleTestModel}
-                    disabled={!isOllamaConnected || !inputOllamaModel || isTestingModel}
-                  >
-                    Test Model
-                  </Button>
-                </div>
-                {getModelStatusDot()}
-                
-                {testError && (
-                  <Alert variant="destructive" className="mt-2">
-                    <AlertDescription>{testError}</AlertDescription>
-                  </Alert>
-                )}
-                
-                {testResponse && (
-                  <div className="mt-4 p-3 bg-muted rounded-md text-sm">
-                    <div className="font-medium mb-1">Model response:</div>
-                    <p className="italic">{testResponse}</p>
-                  </div>
-                )}
               </div>
-            )}
+            </div>
+
+            <Button 
+              onClick={handleSaveOllamaConfig} 
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing Connection
+                </>
+              ) : (
+                'Test & Save Ollama Configuration'
+              )}
+            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="groqApiKey">Groq API Key</Label>
+              <div className="flex space-x-2">
+                <Input
+                  id="groqApiKey"
+                  type="password"
+                  placeholder="Enter your Groq API key"
+                  value={groqApiKey}
+                  onChange={(e) => setGroqApiKey(e.target.value)}
+                />
+                <div className="w-10 flex items-center justify-center">
+                  {groqApiKey && isGroqConnected === true && <Check className="h-5 w-5 text-green-500" />}
+                  {groqApiKey && isGroqConnected === false && <AlertCircle className="h-5 w-5 text-red-500" />}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                You can get an API key from <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Groq Console</a>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="groqModel">Groq Model</Label>
+              <div className="flex space-x-2">
+                <Select value={groqModel} onValueChange={setGroqModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="llama3-8b-8192">Llama 3 8B</SelectItem>
+                    <SelectItem value="llama3-70b-8192">Llama 3 70B</SelectItem>
+                    <SelectItem value="mixtral-8x7b-32768">Mixtral 8x7B</SelectItem>
+                    <SelectItem value="gemma-7b-it">Gemma 7B</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="w-10 flex items-center justify-center">
+                  {groqApiKey && groqModel && isGroqModelConnected === true && 
+                    <Check className="h-5 w-5 text-green-500" />
+                  }
+                  {groqApiKey && groqModel && isGroqModelConnected === false && 
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  }
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleSaveGroqConfig} 
+              disabled={isLoading || !groqApiKey}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing Connection
+                </>
+              ) : (
+                'Test & Save Groq Configuration'
+              )}
+            </Button>
+          </div>
+        )}
       </CardContent>
-      <CardFooter>
-        <Button 
-          onClick={handleSave}
-          disabled={!isConfigValid()}
-          className="w-full"
-        >
-          Save Configuration
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
