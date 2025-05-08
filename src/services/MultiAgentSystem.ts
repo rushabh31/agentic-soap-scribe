@@ -1,17 +1,18 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState } from '@/types/agent';
-import { RoutingAgent } from './agents/RoutingAgent';
-import { AuthorizationAgent } from './agents/AuthorizationAgent';
-import { ClaimsAgent } from './agents/ClaimsAgent';
-import { GeneralAgent } from './agents/GeneralAgent';
-import { UrgencyAnalysisEngine } from './agents/UrgencyAnalysisEngine';
-import { SentimentAnalysisEngine } from './agents/SentimentAnalysisEngine';
-import { MedicalInformationExtractor } from './agents/MedicalInformationExtractor';
-import { SOAPGenerator } from './agents/SOAPGenerator';
+import { toast } from 'sonner';
+import { RoutingAgent } from './langchain/RoutingAgent';
+import { SentimentAnalysisEngine } from './langchain/SentimentAnalysisEngine';
+import { UrgencyAnalysisEngine } from './langchain/UrgencyAnalysisEngine';
+import { MedicalInformationExtractor } from './langchain/MedicalInformationExtractor';
+import { SOAPGenerator } from './langchain/SOAPGenerator';
 import { ClinicalAccuracyAgent } from './agents/evaluators/ClinicalAccuracyAgent';
 import { CompletenessAgent } from './agents/evaluators/CompletenessAgent';
 import { ActionabilityAgent } from './agents/evaluators/ActionabilityAgent';
-import { toast } from 'sonner';
+import { AuthorizationAgent } from './agents/AuthorizationAgent';
+import { ClaimsAgent } from './agents/ClaimsAgent';
+import { GeneralAgent } from './agents/GeneralAgent';
 
 export class MultiAgentSystem {
   private routingAgent: RoutingAgent;
@@ -90,41 +91,16 @@ export class MultiAgentSystem {
       
       if (progressCallback) progressCallback(state, 2, 7, agentType, specialistInput, specialistOutput);
       
-      // Step 3: Process with analysis engines in parallel
+      // Step 3: Process with analysis engines in parallel using LangGraph agents
       toast.info('Running analysis engines...');
       if (progressCallback) progressCallback(state, 3, 7);
       
       // We'll run these in parallel for efficiency but track each one separately
-      
-      // Urgency Engine
-      if (progressCallback) progressCallback(state, 3, 7, "urgency", "Analyzing transcript urgency...", "Processing...");
-      const urgencyState = await this.urgencyEngine.process(state);
-      if (progressCallback) progressCallback(
-        state, 3, 7, 
-        "urgency", 
-        "Analyzing transcript urgency...", 
-        `Urgency level determined: ${urgencyState.urgency?.level || 'unknown'}`
-      );
-      
-      // Sentiment Engine
-      if (progressCallback) progressCallback(state, 3, 7, "sentiment", "Analyzing sentiment...", "Processing...");
-      const sentimentState = await this.sentimentEngine.process(state);
-      if (progressCallback) progressCallback(
-        state, 3, 7, 
-        "sentiment", 
-        "Analyzing sentiment...", 
-        `Sentiment analysis: ${sentimentState.sentiment?.overall || 'neutral'} (score: ${sentimentState.sentiment?.score || 0})`
-      );
-      
-      // Medical Information Extractor
-      if (progressCallback) progressCallback(state, 3, 7, "medical", "Extracting medical information...", "Processing...");
-      const medicalState = await this.medicalExtractor.process(state);
-      if (progressCallback) progressCallback(
-        state, 3, 7, 
-        "medical", 
-        "Extracting medical information...",
-        `Medical information extracted: ${Object.keys(medicalState.medicalInfo || {}).length} conditions found`
-      );
+      const [urgencyState, sentimentState, medicalState] = await Promise.all([
+        this.processUrgency(state, progressCallback),
+        this.processSentiment(state, progressCallback),
+        this.processMedical(state, progressCallback)
+      ]);
       
       // Merge the analysis results into the state
       state = {
@@ -132,9 +108,12 @@ export class MultiAgentSystem {
         urgency: urgencyState.urgency,
         sentiment: sentimentState.sentiment,
         medicalInfo: medicalState.medicalInfo,
-        messages: [...state.messages, ...urgencyState.messages.filter(m => !state.messages.find(existing => existing.id === m.id)),
-                   ...sentimentState.messages.filter(m => !state.messages.find(existing => existing.id === m.id)),
-                   ...medicalState.messages.filter(m => !state.messages.find(existing => existing.id === m.id))]
+        messages: [
+          ...state.messages, 
+          ...urgencyState.messages.filter(m => !state.messages.find(existing => existing.id === m.id)),
+          ...sentimentState.messages.filter(m => !state.messages.find(existing => existing.id === m.id)),
+          ...medicalState.messages.filter(m => !state.messages.find(existing => existing.id === m.id))
+        ]
       };
       
       // Step 4: Generate SOAP note
@@ -185,5 +164,41 @@ export class MultiAgentSystem {
       toast.error(`Processing error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
+  }
+
+  private async processUrgency(state: AgentState, progressCallback?: Function): Promise<AgentState> {
+    if (progressCallback) progressCallback(state, 3, 7, "urgency", "Analyzing transcript urgency...", "Processing...");
+    const updatedState = await this.urgencyEngine.process(state);
+    if (progressCallback) progressCallback(
+      state, 3, 7, 
+      "urgency", 
+      "Analyzing transcript urgency...", 
+      `Urgency level determined: ${updatedState.urgency?.level || 'unknown'}`
+    );
+    return updatedState;
+  }
+
+  private async processSentiment(state: AgentState, progressCallback?: Function): Promise<AgentState> {
+    if (progressCallback) progressCallback(state, 3, 7, "sentiment", "Analyzing sentiment...", "Processing...");
+    const updatedState = await this.sentimentEngine.process(state);
+    if (progressCallback) progressCallback(
+      state, 3, 7, 
+      "sentiment", 
+      "Analyzing sentiment...", 
+      `Sentiment analysis: ${updatedState.sentiment?.overall || 'neutral'} (score: ${updatedState.sentiment?.score || 0})`
+    );
+    return updatedState;
+  }
+
+  private async processMedical(state: AgentState, progressCallback?: Function): Promise<AgentState> {
+    if (progressCallback) progressCallback(state, 3, 7, "medical", "Extracting medical information...", "Processing...");
+    const updatedState = await this.medicalExtractor.process(state);
+    if (progressCallback) progressCallback(
+      state, 3, 7, 
+      "medical", 
+      "Extracting medical information...",
+      `Medical information extracted: ${updatedState.medicalInfo?.conditions.length || 0} conditions found`
+    );
+    return updatedState;
   }
 }

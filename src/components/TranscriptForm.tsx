@@ -20,9 +20,13 @@ const TranscriptForm: React.FC = () => {
     isOllamaConnected, 
     isOllamaModelConnected, 
     isGroqConnected, 
-    isGroqModelConnected,
-    hasApiConfig
+    isGroqModelConnected
   } = useSettings();
+  
+  // Check the API configuration status based on selected provider
+  const hasApiConfig = apiProvider === 'ollama' 
+    ? (isOllamaConnected && isOllamaModelConnected)
+    : (isGroqConnected && isGroqModelConnected);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
