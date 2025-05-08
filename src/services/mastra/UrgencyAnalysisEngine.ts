@@ -93,8 +93,8 @@ Format your response as valid JSON with the following structure ONLY:
       
     const message = {
       id: uuidv4(),
-      from: 'urgency',
-      to: 'all',
+      from: 'urgency' as any,
+      to: 'all' as any,
       content: `Urgency assessment: ${urgencyLevel}/10 - ${urgencyCategory}. ${urgencyAnalysis.summary || ''}`,
       timestamp: Date.now()
     };

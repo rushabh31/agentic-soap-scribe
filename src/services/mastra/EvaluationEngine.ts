@@ -43,7 +43,7 @@ export class EvaluationEngine extends MastraAgent {
     // Create evaluation prompt
     const soapNote = state.soapNote;
     const medicalInfo = state.medicalInfo || {};
-    const urgency = state.urgency || {};
+    const urgency = state.urgency || { level: 'Not assessed', reason: '' };
     const disposition = state.disposition || 'general';
     
     const prompt = `
@@ -93,7 +93,7 @@ Provide your detailed evaluation as JSON with the following structure:
 }
 `;
 
-    // Call the Mastra agent for evaluation
+    // Call the parent process method which will use Mastra
     const result = await super.process(state, prompt);
     
     // Parse the evaluation results
@@ -138,8 +138,8 @@ Summary: ${evaluation.summary || "No summary available."}
   private sendMessage(state: AgentState, content: string): AgentState {
     const message = {
       id: uuidv4(),
-      from: 'evaluation',
-      to: 'all',
+      from: 'evaluation' as any, // Type casting to match AgentType
+      to: 'all' as any,
       content,
       timestamp: Date.now()
     };

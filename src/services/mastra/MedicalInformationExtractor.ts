@@ -109,8 +109,8 @@ Format your response as valid JSON with the following structure ONLY:
     
     const message = {
       id: uuidv4(),
-      from: 'medical',
-      to: 'all',
+      from: 'medical' as any,
+      to: 'all' as any,
       content: `Medical extraction complete. Found ${conditionCount} conditions, ${procedureCount} procedures, and ${symptomCount} symptoms.`,
       timestamp: Date.now()
     };

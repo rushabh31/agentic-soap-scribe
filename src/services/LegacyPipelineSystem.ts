@@ -1,13 +1,9 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from './apiService';
 import { toast } from 'sonner';
 import { SOAPNote } from '@/types/agent';
 import { Mastra } from "@mastra/core";
-import { ChatGroq } from "@langchain/community/chat_models/groq";
-import { ChatOllama } from "@langchain/community/chat_models/ollama";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { getApiProvider } from './apiService';
 
 export class LegacyPipelineSystem {
@@ -47,35 +43,15 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
 `;
 
   private mastra: Mastra;
-  private chatModel: ChatGroq | ChatOllama;
   
   constructor() {
     // Initialize Mastra for simple tasks
     this.mastra = new Mastra();
-    this.chatModel = this.getModel();
     this.setupMastraTasks();
   }
   
-  private getModel() {
-    const { 
-      apiProvider, 
-      groqApiKey, 
-      groqModel, 
-      ollamaUrl, 
-      ollamaModel 
-    } = getApiProvider();
-
-    if (apiProvider === 'groq') {
-      return new ChatGroq({
-        apiKey: groqApiKey as string,
-        modelName: groqModel as string,
-      });
-    } else {
-      return new ChatOllama({
-        baseUrl: ollamaUrl as string,
-        model: ollamaModel as string,
-      });
-    }
+  private getApiConfig() {
+    return getApiProvider();
   }
   
   private setupMastraTasks() {
@@ -86,61 +62,112 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
   }
   
   private setupDispositionTask() {
-    const dispositionPrompt = ChatPromptTemplate.fromMessages([
-      ["system", this.dispositionSystemPrompt],
-      ["human", `Please analyze the following healthcare call transcript and classify it into one of the call types.
-Transcript:
-{input}
-
-Respond with ONLY the classification as a single word, with no additional text.`]
-    ]);
+    const dispositionPrompt = this.dispositionSystemPrompt;
     
-    this.mastra.addTask("classify_disposition", async (input: string) => {
-      const promptValue = await dispositionPrompt.invoke({ input });
-      const result = await this.chatModel.invoke(promptValue);
-      return result.content.toString();
+    this.mastra.registerTask("classify_disposition", async (input: string) => {
+      const apiConfig = this.getApiConfig();
+      
+      const fullPrompt = `${dispositionPrompt}
+
+Please analyze the following healthcare call transcript and classify it into one of the call types.
+Transcript:
+${input}
+
+Respond with ONLY the classification as a single word, with no additional text.`;
+      
+      let result = "";
+      if (apiConfig.apiProvider === 'groq') {
+        result = await this.mastra.generateText({
+          model: apiConfig.groqModel as string,
+          prompt: fullPrompt,
+          apiKey: apiConfig.groqApiKey as string,
+          provider: "groq"
+        });
+      } else {
+        result = await this.mastra.generateText({
+          model: apiConfig.ollamaModel as string,
+          prompt: fullPrompt,
+          baseUrl: apiConfig.ollamaUrl as string,
+          provider: "ollama" 
+        });
+      }
+      
+      return result.trim();
     });
   }
   
   private setupSoapTask() {
-    const soapPrompt = ChatPromptTemplate.fromMessages([
-      ["system", this.soapGenerationPrompt],
-      ["human", `
-Based on the following healthcare call transcript with disposition classified as {disposition}, generate a comprehensive SOAP note.
+    const soapPrompt = this.soapGenerationPrompt;
+    
+    this.mastra.registerTask("generate_soap", async (params: {transcript: string, disposition: string}) => {
+      const { transcript, disposition } = params;
+      const apiConfig = this.getApiConfig();
+      
+      const fullPrompt = `${soapPrompt}
+
+Based on the following healthcare call transcript with disposition classified as ${disposition}, generate a comprehensive SOAP note.
 Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clinical accuracy, completeness,
 relevance, and actionability.
 
 TRANSCRIPT:
-{transcript}
+${transcript}
 
 Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
-Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.
-`]
-    ]);
-    
-    this.mastra.addTask("generate_soap", async (params: {transcript: string, disposition: string}) => {
-      const promptValue = await soapPrompt.invoke(params);
-      const result = await this.chatModel.invoke(promptValue);
-      return result.content.toString();
+Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.`;
+
+      let result = "";
+      if (apiConfig.apiProvider === 'groq') {
+        result = await this.mastra.generateText({
+          model: apiConfig.groqModel as string,
+          prompt: fullPrompt,
+          apiKey: apiConfig.groqApiKey as string,
+          provider: "groq"
+        });
+      } else {
+        result = await this.mastra.generateText({
+          model: apiConfig.ollamaModel as string,
+          prompt: fullPrompt,
+          baseUrl: apiConfig.ollamaUrl as string,
+          provider: "ollama" 
+        });
+      }
+      
+      return result;
     });
   }
   
   private setupSentimentTask() {
-    const sentimentPrompt = ChatPromptTemplate.fromMessages([
-      ["system", this.sentimentAnalysisPrompt],
-      ["human", `
+    const sentimentPrompt = this.sentimentAnalysisPrompt;
+    
+    this.mastra.registerTask("analyze_sentiment", async (input: string) => {
+      const apiConfig = this.getApiConfig();
+      
+      const fullPrompt = `${sentimentPrompt}
+
 Analyze the sentiment in the following healthcare call transcript and categorize it as Satisfied, Neutral, or Dissatisfied.
 Only respond with one of these three sentiment categories and no other text.
 
 TRANSCRIPT:
-{input}
-`]
-    ]);
-    
-    this.mastra.addTask("analyze_sentiment", async (input: string) => {
-      const promptValue = await sentimentPrompt.invoke({ input });
-      const result = await this.chatModel.invoke(promptValue);
-      return result.content.toString();
+${input}`;
+
+      let result = "";
+      if (apiConfig.apiProvider === 'groq') {
+        result = await this.mastra.generateText({
+          model: apiConfig.groqModel as string,
+          prompt: fullPrompt,
+          apiKey: apiConfig.groqApiKey as string,
+          provider: "groq"
+        });
+      } else {
+        result = await this.mastra.generateText({
+          model: apiConfig.ollamaModel as string,
+          prompt: fullPrompt,
+          baseUrl: apiConfig.ollamaUrl as string,
+          provider: "ollama" 
+        });
+      }
+      
+      return result.trim();
     });
   }
   
@@ -151,16 +178,16 @@ TRANSCRIPT:
     try {
       // Step 1: Determine call disposition
       if (progressCallback) progressCallback(1, 3, "Determining call disposition...");
-      const disposition = await this.mastra.run("classify_disposition", transcript);
+      const disposition = await this.mastra.executeTask("classify_disposition", transcript);
       
       // Step 2: Generate SOAP note
       if (progressCallback) progressCallback(2, 3, "Generating SOAP note...");
-      const soapText = await this.mastra.run("generate_soap", { transcript, disposition });
+      const soapText = await this.mastra.executeTask("generate_soap", { transcript, disposition });
       const soapNote = this.parseSOAPSections(soapText);
       
       // Step 3: Analyze sentiment
       if (progressCallback) progressCallback(3, 3, "Analyzing sentiment...");
-      const sentiment = await this.mastra.run("analyze_sentiment", transcript);
+      const sentiment = await this.mastra.executeTask("analyze_sentiment", transcript);
       
       return {
         soapNote,

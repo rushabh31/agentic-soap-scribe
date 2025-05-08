@@ -84,8 +84,8 @@ Remember: Accuracy is critical. Healthcare professionals will rely on this docum
     // Send a message about the SOAP generation
     const message = {
       id: uuidv4(),
-      from: 'soap_generator',
-      to: 'all',
+      from: 'soap_generator' as any,
+      to: 'all' as any,
       content: `SOAP note generated with focused accuracy on the clinical details.
 - Subjective section includes ${this.countWords(sections.subjective)} words
 - Objective section includes ${this.countWords(sections.objective)} words  

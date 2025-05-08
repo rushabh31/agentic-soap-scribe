@@ -91,8 +91,8 @@ Return your analysis ONLY as valid JSON with the following structure:
     
     const message = {
       id: uuidv4(),
-      from: 'sentiment',
-      to: 'all',
+      from: 'sentiment' as any,
+      to: 'all' as any,
       content: `Sentiment analysis: ${sentimentType} (${sentimentScore}/10). Member satisfaction: ${satisfaction}/10. Key emotions: ${keyEmotions}.`,
       timestamp: Date.now()
     };

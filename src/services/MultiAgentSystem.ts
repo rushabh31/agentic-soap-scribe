@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState } from '@/types/agent';
 import { toast } from 'sonner';
@@ -128,12 +127,13 @@ export class MultiAgentSystem {
       if (progressCallback) progressCallback(state, 5, 7, "evaluation", "Evaluating results...", "Processing...");
       state = await this.evaluationEngine.process(state);
       if (progressCallback) {
-        const lastMessage = state.messages[state.messages.length - 1];
+        const score = state.evaluationResults?.overallScore || 
+                     (state.evaluationResults as any)?.overallScore || 'N/A';
         progressCallback(
           state, 5, 7, 
           "evaluation", 
           "Evaluating results...", 
-          `Evaluation complete with score: ${state.evaluationResults?.overallScore || 'N/A'}/100`
+          `Evaluation complete with score: ${score}/100`
         );
       }
       

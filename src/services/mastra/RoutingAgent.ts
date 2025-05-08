@@ -47,8 +47,8 @@ Respond with ONLY the classification as a single word, with no additional text.
     // Send a message about the disposition
     const message = {
       id: uuidv4(),
-      from: 'routing',
-      to: 'all',
+      from: 'routing' as any,
+      to: 'all' as any,
       content: `Call classified as: ${disposition}. Routing to appropriate specialist agent.`,
       timestamp: Date.now()
     };
