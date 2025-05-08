@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/components/ui/use-toast';
 import { FileText, AlertCircle, Send } from 'lucide-react';
 import { useAgent } from '@/contexts/AgentContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import ApiKeyForm from './ApiKeyForm';
 
 const TranscriptForm: React.FC = () => {
@@ -14,6 +15,7 @@ const TranscriptForm: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { processTranscript, isProcessing, hasApiConfig } = useAgent();
+  const { apiProvider, isOllamaConnected } = useSettings();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +24,16 @@ const TranscriptForm: React.FC = () => {
       toast({
         title: 'Empty Transcript',
         description: 'Please enter a transcript to analyze.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check Ollama connection if using Ollama
+    if (apiProvider === 'ollama' && !isOllamaConnected) {
+      toast({
+        title: 'Ollama Connection Error',
+        description: 'Cannot connect to Ollama server. Please check your configuration.',
         variant: 'destructive',
       });
       return;
@@ -61,6 +73,9 @@ const TranscriptForm: React.FC = () => {
     );
   }
 
+  // Show warning if using Ollama but not connected
+  const showOllamaWarning = apiProvider === 'ollama' && !isOllamaConnected;
+
   return (
     <form onSubmit={handleSubmit}>
       <Card className="w-full">
@@ -74,19 +89,33 @@ const TranscriptForm: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {showOllamaWarning && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    Cannot connect to Ollama server. Please check your configuration in Settings.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <Textarea
             placeholder="Paste your healthcare call transcript here..."
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
             className="min-h-[300px] font-mono text-sm"
-            disabled={isProcessing}
+            disabled={isProcessing || showOllamaWarning}
           />
         </CardContent>
         <CardFooter className="flex justify-end">
           <Button 
             type="submit" 
             className="px-6 py-2" 
-            disabled={isProcessing || !transcript.trim()}
+            disabled={isProcessing || !transcript.trim() || showOllamaWarning}
           >
             {isProcessing ? 'Processing...' : 'Process Transcript'} <Send className="ml-2 h-4 w-4" />
           </Button>

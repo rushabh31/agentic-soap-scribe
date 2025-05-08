@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,13 +17,29 @@ const ApiKeyForm: React.FC = () => {
     setApiProviderValue, 
     ollamaUrl, 
     setOllamaUrlValue, 
-    hasApiConfig 
+    hasApiConfig,
+    isOllamaConnected,
+    checkOllamaConnection
   } = useSettings();
   
   const [inputKey, setInputKey] = useState(apiKey);
   const [inputProvider, setInputProvider] = useState<ApiProvider>(apiProvider);
   const [inputOllamaUrl, setInputOllamaUrl] = useState(ollamaUrl);
   const [isEditing, setIsEditing] = useState(!hasApiConfig);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
+
+  // Check Ollama connection when component mounts or provider changes to Ollama
+  useEffect(() => {
+    if (inputProvider === 'ollama' && inputOllamaUrl) {
+      checkOllamaStatus();
+    }
+  }, [inputProvider]);
+
+  const checkOllamaStatus = async () => {
+    setIsCheckingConnection(true);
+    await checkOllamaConnection();
+    setIsCheckingConnection(false);
+  };
 
   const handleSave = () => {
     setApiProviderValue(inputProvider);
@@ -37,6 +53,16 @@ const ApiKeyForm: React.FC = () => {
     setIsEditing(false);
   };
 
+  const handleProviderChange = (value: string) => {
+    const providerValue = value as ApiProvider;
+    setInputProvider(providerValue);
+    
+    // Check Ollama connection when switching to Ollama
+    if (providerValue === 'ollama' && inputOllamaUrl) {
+      checkOllamaStatus();
+    }
+  };
+
   const isConfigValid = () => {
     if (inputProvider === 'groq') {
       return !!inputKey.trim();
@@ -44,6 +70,26 @@ const ApiKeyForm: React.FC = () => {
       return !!inputOllamaUrl.trim();
     }
     return false;
+  };
+
+  const getConnectionStatusDot = () => {
+    if (inputProvider !== 'ollama') return null;
+    
+    if (isCheckingConnection) {
+      return (
+        <div className="flex items-center gap-2 text-sm">
+          <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
+          <span>Checking connection...</span>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-2 text-sm mt-2">
+        <div className={`h-3 w-3 rounded-full ${isOllamaConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+        <span>{isOllamaConnected ? 'Connected to Ollama' : 'Cannot connect to Ollama'}</span>
+      </div>
+    );
   };
 
   if (!isEditing && hasApiConfig) {
@@ -64,6 +110,22 @@ const ApiKeyForm: React.FC = () => {
           <div className="text-sm font-medium">
             Current provider: <span className="text-primary">{apiProvider === 'groq' ? 'Groq' : 'Ollama'}</span>
           </div>
+          {apiProvider === 'ollama' && (
+            <div className="flex items-center gap-2 mt-2">
+              <div className={`h-3 w-3 rounded-full ${isOllamaConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-sm">{isOllamaConnected ? 'Connected to Ollama' : 'Cannot connect to Ollama'}</span>
+              {!isOllamaConnected && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-2" 
+                  onClick={checkOllamaStatus}
+                >
+                  Retry
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="outline" onClick={() => setIsEditing(true)}>
@@ -91,7 +153,7 @@ const ApiKeyForm: React.FC = () => {
             <Label htmlFor="apiProvider">Select Provider</Label>
             <Select
               value={inputProvider}
-              onValueChange={(value) => setInputProvider(value as ApiProvider)}
+              onValueChange={handleProviderChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select API Provider" />
@@ -130,9 +192,20 @@ const ApiKeyForm: React.FC = () => {
                 value={inputOllamaUrl}
                 onChange={(e) => setInputOllamaUrl(e.target.value)}
               />
-              <div className="text-sm text-muted-foreground">
-                Ollama must be running locally or accessible at the URL above
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-muted-foreground">
+                  Ollama must be running locally or accessible at the URL above
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={checkOllamaStatus}
+                  disabled={isCheckingConnection || !inputOllamaUrl.trim()}
+                >
+                  Test Connection
+                </Button>
               </div>
+              {getConnectionStatusDot()}
             </div>
           )}
         </div>
@@ -140,7 +213,7 @@ const ApiKeyForm: React.FC = () => {
       <CardFooter>
         <Button 
           onClick={handleSave}
-          disabled={!isConfigValid()}
+          disabled={!isConfigValid() || (inputProvider === 'ollama' && !isOllamaConnected)}
           className="w-full"
         >
           Save Configuration

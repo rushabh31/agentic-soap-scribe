@@ -10,6 +10,8 @@ interface SettingsContextType {
   ollamaUrl: string;
   setOllamaUrlValue: (url: string) => void;
   hasApiConfig: boolean;
+  isOllamaConnected: boolean;
+  checkOllamaConnection: () => Promise<boolean>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -19,6 +21,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [apiProvider, setApiProviderState] = useState<ApiProvider>('groq');
   const [ollamaUrl, setOllamaUrlState] = useState<string>('http://localhost:11434');
   const [hasApiConfig, setHasApiConfig] = useState<boolean>(false);
+  const [isOllamaConnected, setIsOllamaConnected] = useState<boolean>(false);
   
   // Load settings on initial render
   useEffect(() => {
@@ -39,6 +42,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
     
     updateApiConfigStatus(storedKey, storedProvider, storedOllamaUrl);
+    
+    // Check Ollama connection if it's the selected provider
+    if (storedProvider === 'ollama' && storedOllamaUrl) {
+      checkOllamaConnection();
+    }
   }, []);
   
   const updateApiConfigStatus = (key: string | null, provider: ApiProvider, url: string | null) => {
@@ -46,6 +54,27 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setHasApiConfig(!!key);
     } else if (provider === 'ollama') {
       setHasApiConfig(!!url);
+    }
+  };
+  
+  const checkOllamaConnection = async (): Promise<boolean> => {
+    if (!ollamaUrl) return false;
+    
+    try {
+      const response = await fetch(`${ollamaUrl}/api/version`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const isConnected = response.ok;
+      setIsOllamaConnected(isConnected);
+      return isConnected;
+    } catch (error) {
+      console.error('Error checking Ollama connection:', error);
+      setIsOllamaConnected(false);
+      return false;
     }
   };
   
@@ -59,12 +88,22 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     setApiProvider(provider);
     setApiProviderState(provider);
     updateApiConfigStatus(apiKey, provider, ollamaUrl);
+    
+    // Check Ollama connection if switching to Ollama
+    if (provider === 'ollama') {
+      checkOllamaConnection();
+    }
   };
   
   const setOllamaUrlValue = (url: string) => {
     setOllamaUrl(url);
     setOllamaUrlState(url);
     updateApiConfigStatus(apiKey, apiProvider, url);
+    
+    // Check connection with the new URL if in Ollama mode
+    if (apiProvider === 'ollama') {
+      checkOllamaConnection();
+    }
   };
   
   return (
@@ -75,7 +114,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setApiProviderValue,
       ollamaUrl,
       setOllamaUrlValue,
-      hasApiConfig
+      hasApiConfig,
+      isOllamaConnected,
+      checkOllamaConnection
     }}>
       {children}
     </SettingsContext.Provider>

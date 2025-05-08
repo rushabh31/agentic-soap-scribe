@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { AgentState } from '@/types/agent';
 import { MultiAgentSystem } from '@/services/MultiAgentSystem';
-import { getApiKey, getApiProvider, getOllamaUrl } from '@/services/apiService';
 import { useSettings } from './SettingsContext';
 
 interface AgentContextType {
@@ -20,7 +19,14 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<{ step: number; total: number }>({ step: 0, total: 7 });
   const multiAgentSystem = new MultiAgentSystem();
-  const { hasApiConfig } = useSettings();
+  const { hasApiConfig, apiProvider, isOllamaConnected } = useSettings();
+  
+  // Consider API config valid if:
+  // - For Groq: hasApiConfig is true
+  // - For Ollama: hasApiConfig is true AND isOllamaConnected is true
+  const isApiConfigValid = apiProvider === 'groq' ? 
+    hasApiConfig : 
+    (hasApiConfig && isOllamaConnected);
   
   const processTranscript = async (transcript: string): Promise<AgentState> => {
     setIsProcessing(true);
@@ -47,7 +53,7 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       isProcessing,
       progress,
       processTranscript,
-      hasApiConfig
+      hasApiConfig: isApiConfigValid
     }}>
       {children}
     </AgentContext.Provider>
