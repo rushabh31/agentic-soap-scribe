@@ -73,7 +73,8 @@ export const testOllamaModelConnection = async (url: string, model: string): Pro
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.statusText}`);
+      const errorData = await response.text();
+      throw new Error(`Ollama API error: ${response.status} - ${errorData}`);
     }
 
     const data = await response.json();
@@ -81,6 +82,19 @@ export const testOllamaModelConnection = async (url: string, model: string): Pro
   } catch (error) {
     console.error('Error testing Ollama model connection:', error);
     throw error;
+  }
+};
+
+// Check if Ollama is running by checking the version endpoint
+export const checkOllamaIsRunning = async (url: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${url}/api/version`, {
+      method: 'GET'
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error checking if Ollama is running:', error);
+    return false;
   }
 };
 
@@ -99,6 +113,12 @@ const callOllamaAPI = async (
   }
 
   try {
+    // First check if Ollama is running
+    const isRunning = await checkOllamaIsRunning(ollamaUrl);
+    if (!isRunning) {
+      throw new Error(`Cannot connect to Ollama at ${ollamaUrl}. Please make sure Ollama is running.`);
+    }
+    
     const response = await fetch(`${ollamaUrl}/api/chat`, {
       method: 'POST',
       headers: {
@@ -115,7 +135,8 @@ const callOllamaAPI = async (
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.statusText}`);
+      const errorData = await response.text();
+      throw new Error(`Ollama API error: ${response.status} - ${errorData}`);
     }
 
     const data = await response.json();

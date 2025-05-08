@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { getApiProvider, getOllamaUrl, setOllamaUrl, ApiProvider, getOllamaModel, setOllamaModel, testOllamaModelConnection } from '@/services/apiService';
+import { getApiProvider, getOllamaUrl, setOllamaUrl, ApiProvider, getOllamaModel, setOllamaModel, testOllamaModelConnection, checkOllamaIsRunning } from '@/services/apiService';
 
 interface SettingsContextType {
   apiProvider: ApiProvider;
@@ -23,9 +23,9 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [apiProvider] = useState<ApiProvider>('ollama');
-  const [ollamaUrl, setOllamaUrlState] = useState<string>('http://localhost:11434');
-  const [ollamaModel, setOllamaModelState] = useState<string>('llama3');
-  const [hasApiConfig, setHasApiConfig] = useState<boolean>(false);
+  const [ollamaUrl, setOllamaUrlState] = useState<string>(getOllamaUrl());
+  const [ollamaModel, setOllamaModelState] = useState<string>(getOllamaModel());
+  const [hasApiConfig, setHasApiConfig] = useState<boolean>(!!getOllamaUrl());
   const [isOllamaConnected, setIsOllamaConnected] = useState<boolean>(false);
   const [isOllamaModelConnected, setIsOllamaModelConnected] = useState<boolean>(false);
   const [testResponse, setTestResponse] = useState<string | null>(null);
@@ -64,14 +64,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (!ollamaUrl) return false;
     
     try {
-      const response = await fetch(`${ollamaUrl}/api/version`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const isConnected = response.ok;
+      const isConnected = await checkOllamaIsRunning(ollamaUrl);
       setIsOllamaConnected(isConnected);
       return isConnected;
     } catch (error) {

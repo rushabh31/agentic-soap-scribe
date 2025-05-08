@@ -9,11 +9,11 @@ import EvaluationResultsDisplay from '@/components/result/EvaluationResults';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Layers, BarChart, ArrowLeft, AlertCircle } from 'lucide-react';
+import { FileText, Layers, BarChart, ArrowLeft, AlertCircle, Clock, Scale } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const ResultsPage = () => {
-  const { state } = useAgent();
+  const { state, legacyResult, comparison } = useAgent();
   const navigate = useNavigate();
   
   // If there's no processed state, redirect to the transcripts page
@@ -50,7 +50,7 @@ const ResultsPage = () => {
     );
   }
   
-  const { soapNote, messages, evaluationResults } = state;
+  const { soapNote, messages } = state;
   
   return (
     <PageLayout>
@@ -76,49 +76,156 @@ const ResultsPage = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="soap" className="mb-6">
-          <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="soap" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              SOAP Note
+        <Tabs defaultValue="comparison" className="mb-6">
+          <TabsList className="grid grid-cols-4">
+            <TabsTrigger value="comparison" className="flex items-center gap-2">
+              <Scale className="h-4 w-4" />
+              Comparison
+            </TabsTrigger>
+            <TabsTrigger value="multiagent" className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Multi-Agent SOAP
+            </TabsTrigger>
+            <TabsTrigger value="legacy" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Legacy SOAP
             </TabsTrigger>
             <TabsTrigger value="agents" className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              Agent Interactions
-            </TabsTrigger>
-            <TabsTrigger value="evaluation" className="flex items-center gap-2">
               <BarChart className="h-4 w-4" />
-              Evaluation
+              Agent Interactions
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="soap">
-            <div className="space-y-6">
-              {soapNote && (
-                <SOAPNoteDisplay soapNote={soapNote} title="Multi-Agent SOAP Note" />
-              )}
+          <TabsContent value="comparison">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="h-5 w-5" />
+                    Multi-Agent System SOAP
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {soapNote && (
+                    <SOAPNoteDisplay soapNote={soapNote} title="" />
+                  )}
+                </CardContent>
+              </Card>
               
-              {evaluationResults?.sequential?.soapNote && (
-                <>
-                  <Separator className="my-8" />
-                  <SOAPNoteDisplay 
-                    soapNote={evaluationResults.sequential.soapNote} 
-                    title="Sequential Pipeline SOAP Note (For Comparison)" 
-                  />
-                </>
-              )}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Legacy Pipeline SOAP
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {legacyResult?.soapNote && (
+                    <SOAPNoteDisplay soapNote={legacyResult.soapNote} title="" />
+                  )}
+                </CardContent>
+              </Card>
             </div>
+            
+            {comparison && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Scale className="h-5 w-5" />
+                    SOAP Note Comparison
+                  </CardTitle>
+                  <CardDescription>
+                    Evaluation of both SOAP notes based on accuracy, completeness, and actionability
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h3 className="font-medium text-blue-800 mb-2">Accuracy Difference</h3>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {comparison.accuracyScore > 0 ? '+' : ''}{comparison.accuracyScore.toFixed(1)}%
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          {comparison.accuracyScore > 0 
+                            ? 'Multi-agent system is more accurate' 
+                            : comparison.accuracyScore < 0 
+                              ? 'Legacy system is more accurate'
+                              : 'Equal accuracy'}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <h3 className="font-medium text-purple-800 mb-2">Completeness Difference</h3>
+                        <div className="text-2xl font-bold text-purple-600">
+                          {comparison.completenessScore > 0 ? '+' : ''}{comparison.completenessScore.toFixed(1)}%
+                        </div>
+                        <p className="text-sm text-purple-700">
+                          {comparison.completenessScore > 0 
+                            ? 'Multi-agent system is more complete' 
+                            : comparison.completenessScore < 0 
+                              ? 'Legacy system is more complete'
+                              : 'Equal completeness'}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <h3 className="font-medium text-green-800 mb-2">Actionability Difference</h3>
+                        <div className="text-2xl font-bold text-green-600">
+                          {comparison.actionabilityScore > 0 ? '+' : ''}{comparison.actionabilityScore.toFixed(1)}%
+                        </div>
+                        <p className="text-sm text-green-700">
+                          {comparison.actionabilityScore > 0 
+                            ? 'Multi-agent system is more actionable' 
+                            : comparison.actionabilityScore < 0 
+                              ? 'Legacy system is more actionable'
+                              : 'Equal actionability'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mt-6">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                          comparison.winner === 'multiagent' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : comparison.winner === 'legacy' 
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          <Scale className="h-5 w-5" />
+                        </div>
+                        <h3 className="text-xl font-semibold">
+                          {comparison.winner === 'multiagent' 
+                            ? 'Multi-Agent System Wins' 
+                            : comparison.winner === 'legacy' 
+                              ? 'Legacy System Wins'
+                              : 'It\'s a Tie'}
+                        </h3>
+                      </div>
+                      <p className="text-gray-700 whitespace-pre-wrap">{comparison.reasoning}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="multiagent">
+            {soapNote && (
+              <SOAPNoteDisplay soapNote={soapNote} title="Multi-Agent SOAP Note" />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="legacy">
+            {legacyResult?.soapNote && (
+              <SOAPNoteDisplay soapNote={legacyResult.soapNote} title="Legacy Pipeline SOAP Note" />
+            )}
           </TabsContent>
           
           <TabsContent value="agents">
             {messages && messages.length > 0 && (
               <AgentInteractionDisplay messages={messages} />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="evaluation">
-            {evaluationResults && (
-              <EvaluationResultsDisplay results={evaluationResults} />
             )}
           </TabsContent>
         </Tabs>
