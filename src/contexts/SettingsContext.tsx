@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   checkOllamaIsRunning,
@@ -34,6 +33,7 @@ interface SettingsContextType {
   isGroqModelConnected: boolean | null;
   checkOllamaConnection: (notify?: boolean) => Promise<boolean>;
   checkGroqConnection: (notify?: boolean) => Promise<boolean>;
+  hasApiConfig: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -48,6 +48,12 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [isOllamaModelConnected, setIsOllamaModelConnected] = useState<boolean | null>(null);
   const [isGroqConnected, setIsGroqConnected] = useState<boolean | null>(null);
   const [isGroqModelConnected, setIsGroqModelConnected] = useState<boolean | null>(null);
+
+  // Add computed property for hasApiConfig
+  const hasApiConfig = Boolean(
+    (apiProvider === 'ollama' && ollamaUrl && ollamaModel) || 
+    (apiProvider === 'groq' && groqApiKey && groqModel)
+  );
 
   useEffect(() => {
     checkOllamaConnection();
@@ -186,7 +192,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         isGroqConnected,
         isGroqModelConnected,
         checkOllamaConnection,
-        checkGroqConnection
+        checkGroqConnection,
+        hasApiConfig
       }}
     >
       {children}

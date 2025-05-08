@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState } from '@/types/agent';
 import { RoutingAgent } from './agents/RoutingAgent';
@@ -104,7 +103,7 @@ export class MultiAgentSystem {
         state, 3, 7, 
         "urgency", 
         "Analyzing transcript urgency...", 
-        `Urgency level determined: ${urgencyState.urgency?.level || 'unknown'} (${urgencyState.urgency?.score || 0}/10)`
+        `Urgency level determined: ${urgencyState.urgency?.level || 'unknown'}`
       );
       
       // Sentiment Engine
@@ -114,7 +113,7 @@ export class MultiAgentSystem {
         state, 3, 7, 
         "sentiment", 
         "Analyzing sentiment...", 
-        `Sentiment analysis: ${sentimentState.sentiment?.polarity || 'neutral'} (score: ${sentimentState.sentiment?.score || 0})`
+        `Sentiment analysis: ${sentimentState.sentiment?.overall || 'neutral'} (score: ${sentimentState.sentiment?.score || 0})`
       );
       
       // Medical Information Extractor

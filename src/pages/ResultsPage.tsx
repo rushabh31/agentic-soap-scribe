@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
@@ -74,7 +73,7 @@ const ResultsPage = () => {
               <h2 className="font-semibold">Transcript Processed Successfully</h2>
               <p className="text-sm text-gray-600">
                 {state.disposition ? `Call classified as: ${state.disposition}` : 'Call processed successfully'}
-                {state.sentiment && ` • Sentiment: ${state.sentiment.polarity}`}
+                {state.sentiment && ` • Sentiment: ${state.sentiment.overall}`}
                 {state.urgency && ` • Urgency: ${state.urgency.level}`}
               </p>
             </div>
@@ -244,11 +243,11 @@ const ResultsPage = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Urgency:</span>
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            state.urgency.level === 'high' ? 'bg-red-100 text-red-800' :
-                            state.urgency.level === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            state.urgency.level === "high" ? 'bg-red-100 text-red-800' :
+                            state.urgency.level === "medium" ? 'bg-yellow-100 text-yellow-800' :
                             'bg-green-100 text-green-800'
                           }`}>
-                            {state.urgency.level} ({state.urgency.score}/10)
+                            {state.urgency.level}
                           </span>
                         </div>
                       )}
@@ -257,11 +256,11 @@ const ResultsPage = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Sentiment:</span>
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            state.sentiment.polarity === 'positive' ? 'bg-green-100 text-green-800' :
-                            state.sentiment.polarity === 'negative' ? 'bg-red-100 text-red-800' :
+                            state.sentiment.overall === 'positive' ? 'bg-green-100 text-green-800' :
+                            state.sentiment.overall === 'negative' ? 'bg-red-100 text-red-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {state.sentiment.polarity} ({state.sentiment.score})
+                            {state.sentiment.overall} ({state.sentiment.score})
                           </span>
                         </div>
                       )}

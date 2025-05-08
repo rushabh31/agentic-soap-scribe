@@ -13,7 +13,7 @@ interface ModelOption {
 }
 
 const ModelSelector: React.FC = () => {
-  const { ollamaUrl, ollamaModel, setOllamaModelValue, checkOllamaModelConnection, isOllamaModelConnected } = useSettings();
+  const { ollamaUrl, ollamaModel, setOllamaModel, checkOllamaConnection, isOllamaModelConnected } = useSettings();
   const [ollamaModels, setOllamaModels] = useState<ModelOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +59,8 @@ const ModelSelector: React.FC = () => {
   };
 
   const handleModelChange = (value: string) => {
-    setOllamaModelValue(value);
-    checkOllamaModelConnection(value);
+    setOllamaModel(value);
+    checkOllamaConnection(true);
   };
 
   const handleRefreshModels = () => {
