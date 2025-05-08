@@ -2,14 +2,15 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { AgentState } from '@/types/agent';
 import { MultiAgentSystem } from '@/services/MultiAgentSystem';
-import { getApiKey } from '@/services/groqAPI';
+import { getApiKey, getApiProvider, getOllamaUrl } from '@/services/apiService';
+import { useSettings } from './SettingsContext';
 
 interface AgentContextType {
   state: AgentState | null;
   isProcessing: boolean;
   progress: { step: number; total: number };
   processTranscript: (transcript: string) => Promise<AgentState>;
-  hasApiKey: boolean;
+  hasApiConfig: boolean;
 }
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
@@ -19,6 +20,7 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<{ step: number; total: number }>({ step: 0, total: 7 });
   const multiAgentSystem = new MultiAgentSystem();
+  const { hasApiConfig } = useSettings();
   
   const processTranscript = async (transcript: string): Promise<AgentState> => {
     setIsProcessing(true);
@@ -39,15 +41,13 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
   
-  const hasApiKey = !!getApiKey();
-  
   return (
     <AgentContext.Provider value={{
       state,
       isProcessing,
       progress,
       processTranscript,
-      hasApiKey
+      hasApiConfig
     }}>
       {children}
     </AgentContext.Provider>

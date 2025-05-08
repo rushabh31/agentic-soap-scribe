@@ -13,7 +13,7 @@ const TranscriptForm: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { processTranscript, isProcessing, hasApiKey } = useAgent();
+  const { processTranscript, isProcessing, hasApiConfig } = useAgent();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +40,8 @@ const TranscriptForm: React.FC = () => {
     }
   };
 
-  // If no API key is configured, show the API key form instead
-  if (!hasApiKey) {
+  // If no API is configured, show the API configuration form instead
+  if (!hasApiConfig) {
     return (
       <div className="space-y-6">
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
@@ -51,7 +51,7 @@ const TranscriptForm: React.FC = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Please configure your Groq API key before proceeding
+                Please configure your AI provider before proceeding
               </p>
             </div>
           </div>
