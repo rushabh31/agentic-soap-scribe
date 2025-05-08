@@ -1,7 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState, AgentType, AgentMessage } from '@/types/agent';
-import { callApi, ApiMessage } from '@/services/apiService';
+import { callApi, ApiMessage, getApiProvider } from '@/services/apiService';
 import { toast } from 'sonner';
 
 export abstract class Agent {

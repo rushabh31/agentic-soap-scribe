@@ -2,8 +2,10 @@
 const API_PROVIDER_LOCAL_STORAGE = 'API_PROVIDER';
 const OLLAMA_URL_LOCAL_STORAGE = 'OLLAMA_URL';
 const OLLAMA_MODEL_LOCAL_STORAGE = 'OLLAMA_MODEL';
+const GROQ_API_KEY_LOCAL_STORAGE = 'GROQ_API_KEY';
+const GROQ_MODEL_LOCAL_STORAGE = 'GROQ_MODEL';
 
-export type ApiProvider = 'ollama';
+export type ApiProvider = 'ollama' | 'groq';
 
 export interface ApiMessage {
   role: 'system' | 'user' | 'assistant';
@@ -22,13 +24,14 @@ export interface ApiResponse {
 }
 
 export const getApiProvider = (): ApiProvider => {
-  return 'ollama';
+  return localStorage.getItem(API_PROVIDER_LOCAL_STORAGE) as ApiProvider || 'ollama';
 };
 
 export const setApiProvider = (provider: ApiProvider): void => {
   localStorage.setItem(API_PROVIDER_LOCAL_STORAGE, provider);
 };
 
+// Ollama related functions
 export const getOllamaUrl = (): string => {
   return localStorage.getItem(OLLAMA_URL_LOCAL_STORAGE) || 'http://localhost:11434';
 };
@@ -45,10 +48,33 @@ export const setOllamaModel = (model: string): void => {
   localStorage.setItem(OLLAMA_MODEL_LOCAL_STORAGE, model);
 };
 
-export const callApi = async (
-  messages: ApiMessage[]
-): Promise<string> => {
-  return callOllamaAPI(messages);
+// Groq related functions
+export const getGroqApiKey = (): string => {
+  return localStorage.getItem(GROQ_API_KEY_LOCAL_STORAGE) || '';
+};
+
+export const setGroqApiKey = (apiKey: string): void => {
+  localStorage.setItem(GROQ_API_KEY_LOCAL_STORAGE, apiKey);
+};
+
+export const getGroqModel = (): string => {
+  return localStorage.getItem(GROQ_MODEL_LOCAL_STORAGE) || 'llama3-8b-8192';
+};
+
+export const setGroqModel = (model: string): void => {
+  localStorage.setItem(GROQ_MODEL_LOCAL_STORAGE, model);
+};
+
+export const callApi = async (messages: ApiMessage[]): Promise<string> => {
+  const provider = getApiProvider();
+  
+  if (provider === 'ollama') {
+    return callOllamaAPI(messages);
+  } else if (provider === 'groq') {
+    return callGroqAPI(messages);
+  } else {
+    throw new Error(`Unknown API provider: ${provider}`);
+  }
 };
 
 // Test the connection to Ollama by generating a simple response
@@ -85,6 +111,39 @@ export const testOllamaModelConnection = async (url: string, model: string): Pro
   }
 };
 
+// Test the connection to Groq
+export const testGroqModelConnection = async (apiKey: string, model: string): Promise<string> => {
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{
+          role: 'user',
+          content: 'Generate a short test response to verify the connection.'
+        }],
+        temperature: 0.2,
+        max_tokens: 100
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Groq API error: ${response.status} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('Error testing Groq model connection:', error);
+    throw error;
+  }
+};
+
 // Check if Ollama is running by checking the version endpoint
 export const checkOllamaIsRunning = async (url: string): Promise<boolean> => {
   try {
@@ -98,9 +157,8 @@ export const checkOllamaIsRunning = async (url: string): Promise<boolean> => {
   }
 };
 
-const callOllamaAPI = async (
-  messages: ApiMessage[]
-): Promise<string> => {
+// Call Ollama API
+const callOllamaAPI = async (messages: ApiMessage[]): Promise<string> => {
   const ollamaUrl = getOllamaUrl();
   const ollamaModel = getOllamaModel();
   
@@ -143,6 +201,47 @@ const callOllamaAPI = async (
     return data.message.content;
   } catch (error) {
     console.error('Error calling Ollama API:', error);
+    throw error;
+  }
+};
+
+// Call Groq API
+const callGroqAPI = async (messages: ApiMessage[]): Promise<string> => {
+  const groqApiKey = getGroqApiKey();
+  const groqModel = getGroqModel();
+  
+  if (!groqApiKey) {
+    throw new Error('No Groq API key configured. Please enter your Groq API key in settings.');
+  }
+
+  if (!groqModel) {
+    throw new Error('No Groq model selected. Please select a model in settings.');
+  }
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${groqApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: groqModel,
+        messages: messages,
+        temperature: 0.2,
+        max_tokens: 2000
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Groq API error: ${response.status} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('Error calling Groq API:', error);
     throw error;
   }
 };

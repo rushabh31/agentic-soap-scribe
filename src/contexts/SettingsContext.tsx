@@ -1,40 +1,70 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { getApiProvider, getOllamaUrl, setOllamaUrl, ApiProvider, getOllamaModel, setOllamaModel, testOllamaModelConnection, checkOllamaIsRunning } from '@/services/apiService';
+import { 
+  getApiProvider, setApiProvider, 
+  getOllamaUrl, setOllamaUrl, 
+  getOllamaModel, setOllamaModel, 
+  getGroqApiKey, setGroqApiKey,
+  getGroqModel, setGroqModel,
+  ApiProvider, 
+  testOllamaModelConnection, 
+  checkOllamaIsRunning,
+  testGroqModelConnection
+} from '@/services/apiService';
 
 interface SettingsContextType {
   apiProvider: ApiProvider;
   setApiProviderValue: (provider: ApiProvider) => void;
+  // Ollama settings
   ollamaUrl: string;
   setOllamaUrlValue: (url: string) => void;
   ollamaModel: string;
   setOllamaModelValue: (model: string) => void;
-  hasApiConfig: boolean;
   isOllamaConnected: boolean;
   isOllamaModelConnected: boolean;
-  testResponse: string | null;
   checkOllamaConnection: () => Promise<boolean>;
   checkOllamaModelConnection: (model?: string) => Promise<boolean>;
   testOllamaModel: (model: string) => Promise<string>;
+  // Groq settings
+  groqApiKey: string;
+  setGroqApiKeyValue: (apiKey: string) => void;
+  groqModel: string;
+  setGroqModelValue: (model: string) => void;
+  isGroqConnected: boolean;
+  testGroqModel: (model: string) => Promise<string>;
+  // Common
+  hasApiConfig: boolean;
+  testResponse: string | null;
   isTestingModel: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [apiProvider] = useState<ApiProvider>('ollama');
+  const [apiProvider, setApiProviderState] = useState<ApiProvider>(getApiProvider());
+  // Ollama states
   const [ollamaUrl, setOllamaUrlState] = useState<string>(getOllamaUrl());
   const [ollamaModel, setOllamaModelState] = useState<string>(getOllamaModel());
-  const [hasApiConfig, setHasApiConfig] = useState<boolean>(!!getOllamaUrl());
   const [isOllamaConnected, setIsOllamaConnected] = useState<boolean>(false);
   const [isOllamaModelConnected, setIsOllamaModelConnected] = useState<boolean>(false);
+  // Groq states
+  const [groqApiKey, setGroqApiKeyState] = useState<string>(getGroqApiKey());
+  const [groqModel, setGroqModelState] = useState<string>(getGroqModel());
+  const [isGroqConnected, setIsGroqConnected] = useState<boolean>(false);
+  // Common states
+  const [hasApiConfig, setHasApiConfig] = useState<boolean>(false);
   const [testResponse, setTestResponse] = useState<string | null>(null);
   const [isTestingModel, setIsTestingModel] = useState<boolean>(false);
   
   // Load settings on initial render
   useEffect(() => {
+    const storedProvider = getApiProvider();
     const storedOllamaUrl = getOllamaUrl();
     const storedOllamaModel = getOllamaModel();
+    const storedGroqApiKey = getGroqApiKey();
+    const storedGroqModel = getGroqModel();
+    
+    setApiProviderState(storedProvider);
     
     if (storedOllamaUrl) {
       setOllamaUrlState(storedOllamaUrl);
@@ -44,20 +74,38 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setOllamaModelState(storedOllamaModel);
     }
     
-    updateApiConfigStatus(storedOllamaUrl);
+    if (storedGroqApiKey) {
+      setGroqApiKeyState(storedGroqApiKey);
+    }
     
-    // Check Ollama connection if URL is available
-    if (storedOllamaUrl) {
+    if (storedGroqModel) {
+      setGroqModelState(storedGroqModel);
+    }
+    
+    updateApiConfigStatus(storedProvider, storedOllamaUrl, storedGroqApiKey);
+    
+    // Check API connections based on provider
+    if (storedProvider === 'ollama' && storedOllamaUrl) {
       checkOllamaConnection().then(connected => {
         if (connected && storedOllamaModel) {
           checkOllamaModelConnection(storedOllamaModel);
         }
       });
+    } else if (storedProvider === 'groq' && storedGroqApiKey) {
+      setIsGroqConnected(!!storedGroqApiKey);
     }
   }, []);
   
-  const updateApiConfigStatus = (url: string | null) => {
-    setHasApiConfig(!!url);
+  const updateApiConfigStatus = (
+    provider: ApiProvider, 
+    ollamaUrlValue: string | null,
+    groqApiKeyValue: string | null
+  ) => {
+    if (provider === 'ollama') {
+      setHasApiConfig(!!ollamaUrlValue);
+    } else if (provider === 'groq') {
+      setHasApiConfig(!!groqApiKeyValue);
+    }
   };
   
   const checkOllamaConnection = async (): Promise<boolean> => {
@@ -115,14 +163,47 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
   
-  const setApiProviderValue = (_provider: ApiProvider) => {
-    // No-op as we only use Ollama
+  const testGroqModel = async (modelName: string): Promise<string> => {
+    setIsTestingModel(true);
+    setTestResponse(null);
+    
+    try {
+      const response = await testGroqModelConnection(groqApiKey, modelName);
+      setTestResponse(response);
+      setIsGroqConnected(true);
+      return response;
+    } catch (error) {
+      console.error('Error testing Groq model:', error);
+      setIsGroqConnected(false);
+      throw error;
+    } finally {
+      setIsTestingModel(false);
+    }
+  };
+  
+  const setApiProviderValue = (provider: ApiProvider) => {
+    setApiProvider(provider);
+    setApiProviderState(provider);
+    
+    // Update API configuration status based on the new provider
+    if (provider === 'ollama') {
+      setHasApiConfig(!!ollamaUrl);
+      if (ollamaUrl) {
+        checkOllamaConnection();
+      }
+    } else if (provider === 'groq') {
+      setHasApiConfig(!!groqApiKey);
+      setIsGroqConnected(!!groqApiKey);
+    }
   };
   
   const setOllamaUrlValue = (url: string) => {
     setOllamaUrl(url);
     setOllamaUrlState(url);
-    updateApiConfigStatus(url);
+    
+    if (apiProvider === 'ollama') {
+      updateApiConfigStatus('ollama', url, groqApiKey);
+    }
     
     // Check connection with the new URL
     checkOllamaConnection().then(connected => {
@@ -141,21 +222,45 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
   
+  const setGroqApiKeyValue = (apiKey: string) => {
+    setGroqApiKey(apiKey);
+    setGroqApiKeyState(apiKey);
+    
+    if (apiProvider === 'groq') {
+      updateApiConfigStatus('groq', ollamaUrl, apiKey);
+      setIsGroqConnected(!!apiKey);
+    }
+  };
+  
+  const setGroqModelValue = (model: string) => {
+    setGroqModel(model);
+    setGroqModelState(model);
+  };
+  
   return (
     <SettingsContext.Provider value={{
       apiProvider,
       setApiProviderValue,
+      // Ollama
       ollamaUrl,
       setOllamaUrlValue,
       ollamaModel,
       setOllamaModelValue,
-      hasApiConfig,
       isOllamaConnected,
       isOllamaModelConnected,
-      testResponse,
       checkOllamaConnection,
       checkOllamaModelConnection,
       testOllamaModel,
+      // Groq
+      groqApiKey,
+      setGroqApiKeyValue,
+      groqModel,
+      setGroqModelValue,
+      isGroqConnected,
+      testGroqModel,
+      // Common
+      hasApiConfig,
+      testResponse,
       isTestingModel
     }}>
       {children}
