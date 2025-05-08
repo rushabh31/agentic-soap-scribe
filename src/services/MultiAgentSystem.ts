@@ -7,9 +7,7 @@ import { SentimentAnalysisEngine } from './mastra/SentimentAnalysisEngine';
 import { UrgencyAnalysisEngine } from './mastra/UrgencyAnalysisEngine';
 import { MedicalInformationExtractor } from './mastra/MedicalInformationExtractor';
 import { SOAPGenerator } from './mastra/SOAPGenerator';
-import { ClinicalAccuracyAgent } from './agents/evaluators/ClinicalAccuracyAgent';
-import { CompletenessAgent } from './agents/evaluators/CompletenessAgent';
-import { ActionabilityAgent } from './agents/evaluators/ActionabilityAgent';
+import { EvaluationEngine } from './mastra/EvaluationEngine';
 import { AuthorizationAgent } from './agents/AuthorizationAgent';
 import { ClaimsAgent } from './agents/ClaimsAgent';
 import { GeneralAgent } from './agents/GeneralAgent';
@@ -23,9 +21,7 @@ export class MultiAgentSystem {
   private sentimentEngine: SentimentAnalysisEngine;
   private medicalExtractor: MedicalInformationExtractor;
   private soapGenerator: SOAPGenerator;
-  private clinicalEvaluator: ClinicalAccuracyAgent;
-  private completenessEvaluator: CompletenessAgent;
-  private actionabilityEvaluator: ActionabilityAgent;
+  private evaluationEngine: EvaluationEngine;
   
   constructor() {
     // Initialize all agents
@@ -37,9 +33,7 @@ export class MultiAgentSystem {
     this.sentimentEngine = new SentimentAnalysisEngine();
     this.medicalExtractor = new MedicalInformationExtractor();
     this.soapGenerator = new SOAPGenerator();
-    this.clinicalEvaluator = new ClinicalAccuracyAgent();
-    this.completenessEvaluator = new CompletenessAgent();
-    this.actionabilityEvaluator = new ActionabilityAgent();
+    this.evaluationEngine = new EvaluationEngine();
   }
   
   public async processTranscript(
@@ -91,7 +85,7 @@ export class MultiAgentSystem {
       
       if (progressCallback) progressCallback(state, 2, 7, agentType, specialistInput, specialistOutput);
       
-      // Step 3: Process with analysis engines in parallel using LangGraph agents
+      // Step 3: Process with analysis engines in parallel using Mastra agents
       toast.info('Running analysis engines...');
       if (progressCallback) progressCallback(state, 3, 7);
       
@@ -129,31 +123,18 @@ export class MultiAgentSystem {
           state.soapNote.assessment.length + state.soapNote.plan.length} characters` : 'error'}`
       );
       
-      // Step 5: Evaluate Clinical Accuracy
-      toast.info('Evaluating clinical accuracy...');
-      if (progressCallback) progressCallback(state, 5, 7, "clinical_evaluator", "Evaluating clinical accuracy...", "Processing...");
-      state = await this.clinicalEvaluator.process(state);
+      // Step 5: Evaluate the results with our comprehensive evaluation engine
+      toast.info('Evaluating results...');
+      if (progressCallback) progressCallback(state, 5, 7, "evaluation", "Evaluating results...", "Processing...");
+      state = await this.evaluationEngine.process(state);
       if (progressCallback) {
         const lastMessage = state.messages[state.messages.length - 1];
-        progressCallback(state, 5, 7, "clinical_evaluator", "Evaluating clinical accuracy...", lastMessage?.content || "Evaluation complete");
-      }
-      
-      // Step 6: Evaluate Completeness
-      toast.info('Evaluating documentation completeness...');
-      if (progressCallback) progressCallback(state, 6, 7, "completeness_evaluator", "Evaluating completeness...", "Processing...");
-      state = await this.completenessEvaluator.process(state);
-      if (progressCallback) {
-        const lastMessage = state.messages[state.messages.length - 1];
-        progressCallback(state, 6, 7, "completeness_evaluator", "Evaluating completeness...", lastMessage?.content || "Evaluation complete");
-      }
-      
-      // Step 7: Evaluate Actionability
-      toast.info('Evaluating actionability...');
-      if (progressCallback) progressCallback(state, 7, 7, "actionability_evaluator", "Evaluating actionability...", "Processing...");
-      state = await this.actionabilityEvaluator.process(state);
-      if (progressCallback) {
-        const lastMessage = state.messages[state.messages.length - 1];
-        progressCallback(state, 7, 7, "actionability_evaluator", "Evaluating actionability...", lastMessage?.content || "Evaluation complete");
+        progressCallback(
+          state, 5, 7, 
+          "evaluation", 
+          "Evaluating results...", 
+          `Evaluation complete with score: ${state.evaluationResults?.overallScore || 'N/A'}/100`
+        );
       }
       
       toast.success('Processing complete!');

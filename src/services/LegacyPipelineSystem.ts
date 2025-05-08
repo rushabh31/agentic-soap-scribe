@@ -4,6 +4,11 @@ import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from './apiService';
 import { toast } from 'sonner';
 import { SOAPNote } from '@/types/agent';
+import { Mastra } from "@mastra/core";
+import { ChatGroq } from "@langchain/community/chat_models/groq";
+import { ChatOllama } from "@langchain/community/chat_models/ollama";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { getApiProvider } from './apiService';
 
 export class LegacyPipelineSystem {
   private dispositionSystemPrompt = `
@@ -41,7 +46,103 @@ Your job is to analyze the sentiment expressed in healthcare call transcripts an
 Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without any additional explanation.
 `;
 
-  constructor() {}
+  private mastra: Mastra;
+  private chatModel: ChatGroq | ChatOllama;
+  
+  constructor() {
+    // Initialize Mastra for simple tasks
+    this.mastra = new Mastra();
+    this.chatModel = this.getModel();
+    this.setupMastraTasks();
+  }
+  
+  private getModel() {
+    const { 
+      apiProvider, 
+      groqApiKey, 
+      groqModel, 
+      ollamaUrl, 
+      ollamaModel 
+    } = getApiProvider();
+
+    if (apiProvider === 'groq') {
+      return new ChatGroq({
+        apiKey: groqApiKey as string,
+        modelName: groqModel as string,
+      });
+    } else {
+      return new ChatOllama({
+        baseUrl: ollamaUrl as string,
+        model: ollamaModel as string,
+      });
+    }
+  }
+  
+  private setupMastraTasks() {
+    // Set up tasks for each of our pipeline steps
+    this.setupDispositionTask();
+    this.setupSoapTask();
+    this.setupSentimentTask();
+  }
+  
+  private setupDispositionTask() {
+    const dispositionPrompt = ChatPromptTemplate.fromMessages([
+      ["system", this.dispositionSystemPrompt],
+      ["human", `Please analyze the following healthcare call transcript and classify it into one of the call types.
+Transcript:
+{input}
+
+Respond with ONLY the classification as a single word, with no additional text.`]
+    ]);
+    
+    this.mastra.addTask("classify_disposition", async (input: string) => {
+      const promptValue = await dispositionPrompt.invoke({ input });
+      const result = await this.chatModel.invoke(promptValue);
+      return result.content.toString();
+    });
+  }
+  
+  private setupSoapTask() {
+    const soapPrompt = ChatPromptTemplate.fromMessages([
+      ["system", this.soapGenerationPrompt],
+      ["human", `
+Based on the following healthcare call transcript with disposition classified as {disposition}, generate a comprehensive SOAP note.
+Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clinical accuracy, completeness,
+relevance, and actionability.
+
+TRANSCRIPT:
+{transcript}
+
+Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
+Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.
+`]
+    ]);
+    
+    this.mastra.addTask("generate_soap", async (params: {transcript: string, disposition: string}) => {
+      const promptValue = await soapPrompt.invoke(params);
+      const result = await this.chatModel.invoke(promptValue);
+      return result.content.toString();
+    });
+  }
+  
+  private setupSentimentTask() {
+    const sentimentPrompt = ChatPromptTemplate.fromMessages([
+      ["system", this.sentimentAnalysisPrompt],
+      ["human", `
+Analyze the sentiment in the following healthcare call transcript and categorize it as Satisfied, Neutral, or Dissatisfied.
+Only respond with one of these three sentiment categories and no other text.
+
+TRANSCRIPT:
+{input}
+`]
+    ]);
+    
+    this.mastra.addTask("analyze_sentiment", async (input: string) => {
+      const promptValue = await sentimentPrompt.invoke({ input });
+      const result = await this.chatModel.invoke(promptValue);
+      return result.content.toString();
+    });
+  }
   
   public async processTranscript(
     transcript: string,
@@ -50,15 +151,16 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
     try {
       // Step 1: Determine call disposition
       if (progressCallback) progressCallback(1, 3, "Determining call disposition...");
-      const disposition = await this.classifyDisposition(transcript);
+      const disposition = await this.mastra.run("classify_disposition", transcript);
       
       // Step 2: Generate SOAP note
       if (progressCallback) progressCallback(2, 3, "Generating SOAP note...");
-      const soapNote = await this.generateSOAPNote(transcript, disposition);
+      const soapText = await this.mastra.run("generate_soap", { transcript, disposition });
+      const soapNote = this.parseSOAPSections(soapText);
       
       // Step 3: Analyze sentiment
       if (progressCallback) progressCallback(3, 3, "Analyzing sentiment...");
-      const sentiment = await this.analyzeSentiment(transcript);
+      const sentiment = await this.mastra.run("analyze_sentiment", transcript);
       
       return {
         soapNote,
@@ -69,71 +171,6 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
     } catch (error) {
       console.error('Error in legacy pipeline system:', error);
       toast.error(`Processing error in legacy system: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
-    }
-  }
-  
-  private async classifyDisposition(transcript: string): Promise<string> {
-    try {
-      const messages: ApiMessage[] = [
-        { role: 'system', content: this.dispositionSystemPrompt },
-        { role: 'user', content: `Please analyze the following healthcare call transcript and classify it into one of the call types. 
-Transcript:
-${transcript}
-
-Respond with ONLY the classification as a single word, with no additional text.` }
-      ];
-
-      return await callApi(messages);
-    } catch (error) {
-      toast.error(`Disposition classification error: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
-    }
-  }
-  
-  private async generateSOAPNote(transcript: string, disposition: string): Promise<SOAPNote> {
-    try {
-      const messages: ApiMessage[] = [
-        { role: 'system', content: this.soapGenerationPrompt },
-        { role: 'user', content: `
-Based on the following healthcare call transcript with disposition classified as ${disposition}, generate a comprehensive SOAP note.
-Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clinical accuracy, completeness,
-relevance, and actionability.
-
-TRANSCRIPT:
-${transcript}
-
-Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
-Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.
-` }
-      ];
-
-      const soapText = await callApi(messages);
-      return this.parseSOAPSections(soapText);
-      
-    } catch (error) {
-      toast.error(`SOAP generation error: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
-    }
-  }
-  
-  private async analyzeSentiment(transcript: string): Promise<string> {
-    try {
-      const messages: ApiMessage[] = [
-        { role: 'system', content: this.sentimentAnalysisPrompt },
-        { role: 'user', content: `
-Analyze the sentiment in the following healthcare call transcript and categorize it as Satisfied, Neutral, or Dissatisfied.
-Only respond with one of these three sentiment categories and no other text.
-
-TRANSCRIPT:
-${transcript}
-` }
-      ];
-
-      return await callApi(messages);
-      
-    } catch (error) {
-      toast.error(`Sentiment analysis error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }

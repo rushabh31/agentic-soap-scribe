@@ -25,9 +25,7 @@ const ApiKeyForm: React.FC = () => {
     isOllamaConnected,
     isOllamaModelConnected,
     isGroqConnected, 
-    isGroqModelConnected,
-    useAdvancedSettings,
-    setUseAdvancedSettings
+    isGroqModelConnected
   } = useSettings();
   const { toast } = useToast();
 
@@ -90,17 +88,6 @@ const ApiKeyForm: React.FC = () => {
         <CardDescription>Configure connection to your preferred LLM provider</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="advanced-mode"
-              checked={useAdvancedSettings} 
-              onCheckedChange={setUseAdvancedSettings}
-            />
-            <Label htmlFor="advanced-mode">Advanced Settings</Label>
-          </div>
-        </div>
-        
         <Tabs defaultValue={apiProvider} onValueChange={(value) => setApiProvider(value as 'ollama' | 'groq')}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="ollama">Ollama (Local)</TabsTrigger>
