@@ -42,8 +42,9 @@ export class EvaluationEngine extends LangGraphAgent {
     
     // Create context about the state for evaluation
     const medicalInfoContext = state.medicalInfo || {};
-    const conditionCount = medicalInfoContext.conditions?.length || 0;
-    const procedureCount = medicalInfoContext.procedures?.length || 0;
+    // Safely access properties with optional chaining and nullish coalescing
+    const conditionCount = medicalInfoContext?.conditions?.length ?? 0;
+    const procedureCount = medicalInfoContext?.procedures?.length ?? 0;
     
     const prompt = `
 Please evaluate the quality of this SOAP note in the context of the original transcript.

@@ -45,6 +45,7 @@ export interface EvaluationDimension {
   weaknesses?: string[];
   analysis?: string;
   omissions?: string[];
+  comments?: string; // Added for compatibility with the EvaluationResults component
 }
 
 export interface SystemEvaluation {

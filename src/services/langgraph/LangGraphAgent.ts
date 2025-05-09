@@ -3,7 +3,11 @@ import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from '../apiService';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { Tool } from '@langchain/core/tools';
-import { HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, BaseMessage } from '@langchain/core/messages';
+import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
+import { RunnableConfig } from "@langchain/core/runnables";
+import { Runnable } from "@langchain/core/runnables";
+import { LanguageModelOutput } from "@langchain/core/language_models/base";
 
 // Custom tool for transcript analysis
 class TranscriptAnalysisTool extends Tool {
@@ -52,36 +56,60 @@ export class LangGraphAgent {
       new TranscriptAnalysisTool(transcript)
     ];
     
-    // Create the ReAct agent
-    const agent = createReactAgent({
-      llm: {
-        invoke: async (input) => {
-          try {
-            const inputContent = typeof input === 'string' 
-              ? input 
-              : (input instanceof HumanMessage 
-                  ? input.content 
-                  : (typeof input === 'object' && 'content' in input 
-                      ? input.content 
-                      : JSON.stringify(input)));
-            
-            const messages: ApiMessage[] = [
-              { role: 'system', content: this.systemPrompt },
-              { role: 'user', content: inputContent as string }
-            ];
-            
-            const response = await callApi(messages);
-            return new HumanMessage(response);
-          } catch (error) {
-            console.error(`Error in ${this.agentType} agent:`, error);
-            throw error;
+    // Create a custom llm object that conforms to the expected interface
+    const llm: Runnable<BaseLanguageModelInput, LanguageModelOutput, RunnableConfig> = {
+      invoke: async (input) => {
+        try {
+          let inputContent: string;
+          if (typeof input === 'string') {
+            inputContent = input;
+          } else if (input instanceof HumanMessage || input instanceof BaseMessage) {
+            inputContent = typeof input.content === 'string' ? input.content : JSON.stringify(input.content);
+          } else if (typeof input === 'object' && input !== null && 'content' in input) {
+            inputContent = typeof input.content === 'string' ? input.content : JSON.stringify(input.content);
+          } else {
+            inputContent = JSON.stringify(input);
           }
+          
+          const messages: ApiMessage[] = [
+            { role: 'system', content: this.systemPrompt },
+            { role: 'user', content: inputContent }
+          ];
+          
+          const response = await callApi(messages);
+          return new HumanMessage(response);
+        } catch (error) {
+          console.error(`Error in ${this.agentType} agent:`, error);
+          throw error;
         }
       },
+      
+      // Required interface methods
+      lc_runnable: true,
+      lc_namespace: ["langchain", "llms"],
+      lc_serializable: true,
+      
+      // Implement required methods with no-op functions if they're not used
+      bind: function(args) { return this; },
+      batch: async function(inputs) { return Promise.all(inputs.map(input => this.invoke(input))); },
+      stream: async function*(input) { yield await this.invoke(input); },
+      getName: function() { return "CustomLLM"; },
+      map: function() { return this; },
+      pipe: function() { return this; },
+      withConfig: function() { return this; },
+      withListeners: function() { return this; },
+      withRetry: function() { return this; },
+      withBind: function() { return this; },
+      withMaxConcurrency: function() { return this; },
+      withMaxRetries: function() { return this; },
+      withOptions: function() { return this; }
+    };
+    
+    // Create the ReAct agent
+    return createReactAgent({
+      llm,
       tools
     });
-    
-    return agent;
   }
 
   public async process(state: AgentState, input: string): Promise<{ output: string; state: AgentState }> {
