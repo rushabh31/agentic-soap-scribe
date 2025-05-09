@@ -16,6 +16,8 @@ Your specialized role is to identify and extract medical information from health
 
 Focus on extracting factual medical information with clinical precision.
 Respond in JSON format with structured medical information.
+
+You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
 `;
 
 export class MedicalInformationExtractor extends LangGraphAgent {
@@ -29,9 +31,6 @@ export class MedicalInformationExtractor extends LangGraphAgent {
 Please extract all medical information from this healthcare call transcript.
 Focus on medical conditions, procedures, symptoms, medications, medical history, 
 timeline of medical events, and healthcare providers/facilities mentioned.
-
-Transcript:
-${state.transcript}
 
 Format your response as valid JSON with the following structure ONLY:
 {
@@ -74,6 +73,8 @@ Format your response as valid JSON with the following structure ONLY:
     }
   ]
 }
+
+You can use the transcript_analysis tool to examine specific parts of the transcript if needed.
 `;
 
     // Call the LangGraph agent for extraction

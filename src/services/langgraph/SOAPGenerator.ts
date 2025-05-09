@@ -30,6 +30,8 @@ Your task is to synthesize information into a structured SOAP note that follows 
    - Document all medical conditions mentioned
 
 Your output will be directly reviewed by healthcare professionals and must meet strict clinical documentation standards. Do not omit critical details, and do not include information that cannot be verified from the transcript.
+
+You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
 `;
 
 export class SOAPGenerator extends LangGraphAgent {
@@ -63,10 +65,9 @@ This is for official medical documentation, so:
 CALL CONTEXT:
 ${context}
 
-Original transcript for reference:
-${state.transcript}
-
 Remember: Accuracy is critical. Healthcare professionals will rely on this documentation. Format your response with the exact headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
+
+You can use the transcript_analysis tool to examine specific parts of the transcript if needed.
 `;
 
     // Call the LangGraph agent for SOAP generation

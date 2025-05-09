@@ -15,6 +15,8 @@ Your job is to carefully analyze transcripts of healthcare calls and accurately 
 
 Be very precise in your analysis and base your classification solely on the content of the transcript.
 Respond ONLY with the call type as a single word, no additional text.
+
+You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
 `;
 
 export class RoutingAgent extends LangGraphAgent {
@@ -28,8 +30,7 @@ export class RoutingAgent extends LangGraphAgent {
 Please analyze the following healthcare call transcript and classify it into one of the call types:
 authorization, claims_inquiry, benefits, grievance, enrollment, or general.
 
-Transcript:
-${state.transcript}
+You can use the transcript_analysis tool to examine specific parts of the transcript if needed.
 
 Respond with ONLY the classification as a single word, with no additional text.
 `;

@@ -20,6 +20,8 @@ Rate urgency on a 0-10 scale where:
 9-10: High urgency, requires immediate intervention
 
 Respond with only a JSON object containing the urgency assessment.
+
+You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
 `;
 
 export class UrgencyAnalysisEngine extends LangGraphAgent {
@@ -32,9 +34,6 @@ export class UrgencyAnalysisEngine extends LangGraphAgent {
     const prompt = `
 Please analyze the urgency level of this healthcare call transcript.
 Consider timeframes, medical indicators, administrative deadlines, emotional cues, and potential risks.
-
-Transcript:
-${state.transcript}
 
 Format your response as valid JSON with the following structure ONLY:
 {
@@ -59,6 +58,8 @@ Format your response as valid JSON with the following structure ONLY:
   "riskAssessment": "",
   "summary": ""
 }
+
+You can use the transcript_analysis tool to examine specific parts of the transcript if needed.
 `;
 
     // Call the LangGraph agent for analysis

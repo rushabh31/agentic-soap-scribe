@@ -27,6 +27,8 @@ Your task is to provide comprehensive, data-driven evaluations across multiple d
 
 Provide your evaluation as a precise, structured JSON report with both qualitative analysis and quantitative scoring (0-100 for each dimension).
 Include specific strengths, areas for improvement, and actionable recommendations.
+
+You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
 `;
 
 export class EvaluationEngine extends LangGraphAgent {
@@ -91,6 +93,8 @@ Provide your detailed evaluation as JSON with the following structure:
   "summary": "",
   "recommendations": []
 }
+
+You can use the transcript_analysis tool to verify information against the original transcript if needed.
 `;
 
     // Call the LangGraph agent for evaluation
@@ -120,7 +124,32 @@ Provide your detailed evaluation as JSON with the following structure:
     // Update the state with the evaluation results
     const updatedState = {
       ...state,
-      evaluationResults: evaluation
+      evaluationResults: {
+        ...evaluation,
+        // Add these to match the updated EvaluationResults type
+        multiAgent: {
+          soapNote: state.soapNote,
+          completeness: evaluation.completeness,
+          accuracy: evaluation.clinicalAccuracy,
+          clinicalRelevance: {
+            score: evaluation.clinicalAccuracy?.score || 0,
+            metrics: evaluation.clinicalAccuracy?.metrics || {}
+          },
+          actionability: evaluation.actionability,
+          overallQuality: evaluation.overallScore
+        },
+        sequential: {
+          soapNote: state.soapNote,
+          completeness: evaluation.completeness,
+          accuracy: evaluation.clinicalAccuracy,
+          clinicalRelevance: {
+            score: evaluation.clinicalAccuracy?.score || 0,
+            metrics: evaluation.clinicalAccuracy?.metrics || {}
+          },
+          actionability: evaluation.actionability,
+          overallQuality: evaluation.overallScore
+        }
+      }
     };
 
     // Send a message with the evaluation summary

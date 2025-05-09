@@ -15,6 +15,8 @@ Unlike basic sentiment analysis, you should:
 - Differentiate between clinical language and emotional content
 
 Respond ONLY in valid JSON format with detailed sentiment analysis.
+
+You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
 `;
 
 export class SentimentAnalysisEngine extends LangGraphAgent {
@@ -27,9 +29,6 @@ export class SentimentAnalysisEngine extends LangGraphAgent {
     const prompt = `
 Please perform detailed sentiment analysis on this healthcare call transcript.
 Analyze overall sentiment, sentence-level sentiment, sentiment shifts, and healthcare-specific emotional cues.
-
-Transcript:
-${state.transcript}
 
 Return your analysis ONLY as valid JSON with the following structure:
 {
@@ -53,6 +52,8 @@ Return your analysis ONLY as valid JSON with the following structure:
   "keyEmotions": [],
   "summary": ""
 }
+
+You can use the transcript_analysis tool to examine specific parts of the transcript if needed.
 `;
 
     // Call the LangGraph agent for analysis
