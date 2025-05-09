@@ -65,6 +65,17 @@ export interface EvaluationResults {
   sequential: SystemEvaluation;
 }
 
+// Define a proper MedicalInfo interface
+export interface MedicalInfo {
+  conditions?: any[];
+  procedures?: any[];
+  symptoms?: any[];
+  medications?: any[];
+  medicalHistory?: string;
+  timeline?: string;
+  providers?: any[];
+}
+
 export interface AgentState {
   transcript?: string;
   disposition?: CallDisposition;
@@ -81,15 +92,7 @@ export interface AgentState {
     details: string;
     fullAnalysis?: any;
   };
-  medicalInfo?: {
-    conditions: any[];
-    procedures: any[];
-    symptoms: any[];
-    medications: any[];
-    medicalHistory: string;
-    timeline: string;
-    providers: any[];
-  };
+  medicalInfo?: MedicalInfo;
   soapNote?: SOAPNote;
   evaluationResults?: EvaluationResults;
   messages: AgentMessage[];

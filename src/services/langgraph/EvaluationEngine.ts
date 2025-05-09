@@ -1,6 +1,6 @@
 
 import { LangGraphAgent } from './LangGraphAgent';
-import { AgentState, EvaluationResults } from '@/types/agent';
+import { AgentState, EvaluationResults, MedicalInfo } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
 const SYSTEM_PROMPT = `
@@ -41,10 +41,11 @@ export class EvaluationEngine extends LangGraphAgent {
     }
     
     // Create context about the state for evaluation
-    const medicalInfoContext = state.medicalInfo || {};
-    // Safely access properties with optional chaining and nullish coalescing
-    const conditionCount = medicalInfoContext?.conditions?.length ?? 0;
-    const procedureCount = medicalInfoContext?.procedures?.length ?? 0;
+    // Use the MedicalInfo type with safe access
+    const medicalInfo: MedicalInfo = state.medicalInfo || { conditions: [], procedures: [] };
+    // Get counts safely with optional chaining and nullish coalescing
+    const conditionCount = medicalInfo.conditions?.length ?? 0;
+    const procedureCount = medicalInfo.procedures?.length ?? 0;
     
     const prompt = `
 Please evaluate the quality of this SOAP note in the context of the original transcript.
