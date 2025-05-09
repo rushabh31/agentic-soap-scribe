@@ -40,6 +40,10 @@ export interface AgentMessage {
 export interface EvaluationDimension {
   score: number;
   metrics: Record<string, any>;
+  strengths?: string[];
+  weaknesses?: string[];
+  analysis?: string;
+  omissions?: string[];
 }
 
 export interface SystemEvaluation {

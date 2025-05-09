@@ -3,6 +3,7 @@ import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from '../apiService';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { Tool } from '@langchain/core/tools';
+import { HumanMessage } from '@langchain/core/messages';
 
 // Custom tool for transcript analysis
 class TranscriptAnalysisTool extends Tool {
@@ -56,13 +57,21 @@ export class LangGraphAgent {
       llm: {
         invoke: async (input) => {
           try {
+            const inputContent = typeof input === 'string' 
+              ? input 
+              : (input instanceof HumanMessage 
+                  ? input.content 
+                  : (typeof input === 'object' && 'content' in input 
+                      ? input.content 
+                      : JSON.stringify(input)));
+            
             const messages: ApiMessage[] = [
               { role: 'system', content: this.systemPrompt },
-              { role: 'user', content: input.content }
+              { role: 'user', content: inputContent as string }
             ];
             
             const response = await callApi(messages);
-            return { content: response };
+            return new HumanMessage(response);
           } catch (error) {
             console.error(`Error in ${this.agentType} agent:`, error);
             throw error;
@@ -81,11 +90,31 @@ export class LangGraphAgent {
       const agent = this.createReactAgent(state.transcript || "");
       
       // Invoke the agent
-      const result = await agent.invoke({ content: input });
+      const result = await agent.invoke({ 
+        messages: [new HumanMessage(input)]
+      });
+      
+      let output = "";
+      
+      // Extract the content from the result
+      if (typeof result === 'string') {
+        output = result;
+      } else if ('messages' in result && Array.isArray(result.messages) && result.messages.length > 0) {
+        const lastMessage = result.messages[result.messages.length - 1];
+        if (typeof lastMessage === 'string') {
+          output = lastMessage;
+        } else if (typeof lastMessage === 'object' && lastMessage !== null && 'content' in lastMessage) {
+          output = String(lastMessage.content);
+        }
+      } else if ('response' in result && typeof result.response === 'string') {
+        output = result.response;
+      } else if (typeof result === 'object' && result !== null) {
+        output = JSON.stringify(result);
+      }
       
       // Return the result
       return {
-        output: result.content,
+        output,
         state
       };
     } catch (error) {
