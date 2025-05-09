@@ -45,6 +45,8 @@ export class EvaluationEngine extends LangGraphAgent {
     // Create evaluation prompt
     const soapNote = state.soapNote;
     const medicalInfo = state.medicalInfo || {};
+    const conditions = medicalInfo.conditions || [];
+    const procedures = medicalInfo.procedures || [];
     const urgency = state.urgency || { level: 'Not assessed', reason: '' };
     const disposition = state.disposition || 'general';
     
@@ -54,7 +56,7 @@ Please evaluate the quality of this healthcare SOAP note based on clinical accur
 CONTEXT:
 Call Type: ${disposition}
 Urgency Level: ${urgency.level || 'Not assessed'} - ${urgency.reason || ''}
-Medical Information: Patient has ${medicalInfo.conditions?.length || 0} conditions, ${medicalInfo.procedures?.length || 0} procedures identified
+Medical Information: Patient has ${conditions.length || 0} conditions, ${procedures.length || 0} procedures identified
 
 SOAP NOTE TO EVALUATE:
 SUBJECTIVE:
@@ -125,29 +127,30 @@ You can use the transcript_analysis tool to verify information against the origi
     const updatedState = {
       ...state,
       evaluationResults: {
-        ...evaluation,
-        // Add these to match the updated EvaluationResults type
+        overallScore: evaluation.overallScore || 0,
+        summary: evaluation.summary || '',
+        recommendations: evaluation.recommendations || [],
         multiAgent: {
           soapNote: state.soapNote,
-          completeness: evaluation.completeness,
-          accuracy: evaluation.clinicalAccuracy,
+          completeness: evaluation.completeness || { score: 0, metrics: {} },
+          accuracy: evaluation.clinicalAccuracy || { score: 0, metrics: {} },
           clinicalRelevance: {
             score: evaluation.clinicalAccuracy?.score || 0,
             metrics: evaluation.clinicalAccuracy?.metrics || {}
           },
-          actionability: evaluation.actionability,
-          overallQuality: evaluation.overallScore
+          actionability: evaluation.actionability || { score: 0, metrics: {} },
+          overallQuality: evaluation.overallScore || 0
         },
         sequential: {
           soapNote: state.soapNote,
-          completeness: evaluation.completeness,
-          accuracy: evaluation.clinicalAccuracy,
+          completeness: evaluation.completeness || { score: 0, metrics: {} },
+          accuracy: evaluation.clinicalAccuracy || { score: 0, metrics: {} },
           clinicalRelevance: {
             score: evaluation.clinicalAccuracy?.score || 0,
             metrics: evaluation.clinicalAccuracy?.metrics || {}
           },
-          actionability: evaluation.actionability,
-          overallQuality: evaluation.overallScore
+          actionability: evaluation.actionability || { score: 0, metrics: {} },
+          overallQuality: evaluation.overallScore || 0
         }
       }
     };

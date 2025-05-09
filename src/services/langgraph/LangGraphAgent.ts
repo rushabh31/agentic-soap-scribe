@@ -1,7 +1,7 @@
 
 import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from '../apiService';
-import { createReactAgent } from '@langchain/langgraph';
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { Tool } from '@langchain/core/tools';
 
 // Custom tool for transcript analysis

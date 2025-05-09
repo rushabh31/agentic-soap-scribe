@@ -1,5 +1,4 @@
-
-export type AgentType = 
+export type AgentType =
   | 'routing'
   | 'authorization'
   | 'claims'
@@ -8,10 +7,10 @@ export type AgentType =
   | 'sentiment'
   | 'medical'
   | 'soap_generator'
+  | 'evaluation'
   | 'clinical_evaluator'
   | 'completeness_evaluator'
-  | 'actionability_evaluator'
-  | 'evaluation';
+  | 'actionability_evaluator';
 
 export type CallDisposition =
   | 'authorization'
@@ -23,6 +22,13 @@ export type CallDisposition =
 
 export type SentimentType = 'positive' | 'neutral' | 'negative';
 
+export interface SOAPNote {
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+}
+
 export interface AgentMessage {
   id: string;
   from: AgentType;
@@ -31,8 +37,30 @@ export interface AgentMessage {
   timestamp: number;
 }
 
+export interface EvaluationDimension {
+  score: number;
+  metrics: Record<string, any>;
+}
+
+export interface SystemEvaluation {
+  soapNote?: SOAPNote;
+  completeness?: EvaluationDimension;
+  accuracy?: EvaluationDimension;
+  clinicalRelevance?: EvaluationDimension;
+  actionability?: EvaluationDimension;
+  overallQuality?: number;
+}
+
+export interface EvaluationResults {
+  overallScore: number;
+  summary?: string;
+  recommendations?: string[];
+  multiAgent: SystemEvaluation;
+  sequential: SystemEvaluation;
+}
+
 export interface AgentState {
-  transcript: string;
+  transcript?: string;
   disposition?: CallDisposition;
   extractedInfo: Record<string, any>;
   urgency?: {
@@ -50,62 +78,12 @@ export interface AgentState {
     conditions: any[];
     procedures: any[];
     symptoms: any[];
-    medications?: any[];
-    medicalHistory?: string;
-    timeline?: string;
-    providers?: any[];
+    medications: any[];
+    medicalHistory: string;
+    timeline: string;
+    providers: any[];
   };
   soapNote?: SOAPNote;
   evaluationResults?: EvaluationResults;
   messages: AgentMessage[];
-}
-
-export interface SOAPNote {
-  subjective: string;
-  objective: string;
-  assessment: string;
-  plan: string;
-}
-
-export interface EvaluationMetric {
-  score: number;
-  details: string;
-}
-
-export interface EvaluationDimension {
-  score: number;
-  metrics: Record<string, EvaluationMetric>;
-  strengths?: string[];
-  weaknesses?: string[];
-  analysis?: string;
-}
-
-// Updated to match the implementation in evaluator files
-export interface EvaluationResults {
-  clinicalAccuracy?: EvaluationDimension;
-  completeness?: EvaluationDimension;
-  actionability?: EvaluationDimension;
-  overallScore: number;
-  summary?: string;
-  recommendations?: string[];
-  error?: string;
-  rawResponse?: string;
-  
-  // Added for compatibility with clinical and actionability evaluators
-  multiAgent?: {
-    soapNote?: SOAPNote;
-    completeness?: EvaluationDimension;
-    accuracy?: EvaluationDimension;
-    clinicalRelevance?: EvaluationDimension;
-    actionability?: EvaluationDimension;
-    overallQuality?: number;
-  };
-  sequential?: {
-    soapNote?: SOAPNote;
-    completeness?: EvaluationDimension;
-    accuracy?: EvaluationDimension;
-    clinicalRelevance?: EvaluationDimension;
-    actionability?: EvaluationDimension;
-    overallQuality?: number;
-  };
 }

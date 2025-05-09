@@ -28,16 +28,19 @@ export class ClinicalAccuracyAgent extends Agent {
     }
     
     // Create a sequential SOAP note for comparison (simplified version)
-    const sequentialSoapNote = await this.generateSequentialSOAP(state.transcript);
+    const sequentialSoapNote = await this.generateSequentialSOAP(state.transcript || "");
     
     // Evaluate both SOAP notes
-    const multiAgentEvaluation = await this.evaluateSoapNote(state.soapNote, state.transcript);
-    const sequentialEvaluation = await this.evaluateSoapNote(sequentialSoapNote, state.transcript);
+    const multiAgentEvaluation = await this.evaluateSoapNote(state.soapNote, state.transcript || "");
+    const sequentialEvaluation = await this.evaluateSoapNote(sequentialSoapNote, state.transcript || "");
     
     // Update the state with evaluation results
     const updatedState = {
       ...state,
       evaluationResults: {
+        overallScore: multiAgentEvaluation.overallQuality || 0,
+        summary: "Clinical accuracy evaluation complete",
+        recommendations: [],
         multiAgent: {
           ...multiAgentEvaluation,
           soapNote: state.soapNote
