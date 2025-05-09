@@ -1,10 +1,9 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from './apiService';
 import { toast } from 'sonner';
 import { SOAPNote } from '@/types/agent';
-import { Mastra } from "@mastra/core";
-import { getApiProvider } from './apiService';
 
 export class LegacyPipelineSystem {
   private dispositionSystemPrompt = `
@@ -41,134 +40,9 @@ Your job is to analyze the sentiment expressed in healthcare call transcripts an
 
 Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without any additional explanation.
 `;
-
-  private mastra: Mastra;
   
   constructor() {
-    // Initialize Mastra for simple tasks
-    this.mastra = new Mastra();
-    this.setupMastraTasks();
-  }
-  
-  private getApiConfig() {
-    return getApiProvider();
-  }
-  
-  private setupMastraTasks() {
-    // Set up tasks for each of our pipeline steps
-    this.setupDispositionTask();
-    this.setupSoapTask();
-    this.setupSentimentTask();
-  }
-  
-  private setupDispositionTask() {
-    const dispositionPrompt = this.dispositionSystemPrompt;
-    
-    this.mastra.registerTask("classify_disposition", async (input: string) => {
-      const apiConfig = this.getApiConfig();
-      
-      const fullPrompt = `${dispositionPrompt}
-
-Please analyze the following healthcare call transcript and classify it into one of the call types.
-Transcript:
-${input}
-
-Respond with ONLY the classification as a single word, with no additional text.`;
-      
-      let result = "";
-      if (apiConfig.apiProvider === 'groq') {
-        result = await this.mastra.generateText({
-          model: apiConfig.groqModel as string,
-          prompt: fullPrompt,
-          apiKey: apiConfig.groqApiKey as string,
-          provider: "groq"
-        });
-      } else {
-        result = await this.mastra.generateText({
-          model: apiConfig.ollamaModel as string,
-          prompt: fullPrompt,
-          baseUrl: apiConfig.ollamaUrl as string,
-          provider: "ollama" 
-        });
-      }
-      
-      return result.trim();
-    });
-  }
-  
-  private setupSoapTask() {
-    const soapPrompt = this.soapGenerationPrompt;
-    
-    this.mastra.registerTask("generate_soap", async (params: {transcript: string, disposition: string}) => {
-      const { transcript, disposition } = params;
-      const apiConfig = this.getApiConfig();
-      
-      const fullPrompt = `${soapPrompt}
-
-Based on the following healthcare call transcript with disposition classified as ${disposition}, generate a comprehensive SOAP note.
-Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clinical accuracy, completeness,
-relevance, and actionability.
-
-TRANSCRIPT:
-${transcript}
-
-Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
-Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.`;
-
-      let result = "";
-      if (apiConfig.apiProvider === 'groq') {
-        result = await this.mastra.generateText({
-          model: apiConfig.groqModel as string,
-          prompt: fullPrompt,
-          apiKey: apiConfig.groqApiKey as string,
-          provider: "groq"
-        });
-      } else {
-        result = await this.mastra.generateText({
-          model: apiConfig.ollamaModel as string,
-          prompt: fullPrompt,
-          baseUrl: apiConfig.ollamaUrl as string,
-          provider: "ollama" 
-        });
-      }
-      
-      return result;
-    });
-  }
-  
-  private setupSentimentTask() {
-    const sentimentPrompt = this.sentimentAnalysisPrompt;
-    
-    this.mastra.registerTask("analyze_sentiment", async (input: string) => {
-      const apiConfig = this.getApiConfig();
-      
-      const fullPrompt = `${sentimentPrompt}
-
-Analyze the sentiment in the following healthcare call transcript and categorize it as Satisfied, Neutral, or Dissatisfied.
-Only respond with one of these three sentiment categories and no other text.
-
-TRANSCRIPT:
-${input}`;
-
-      let result = "";
-      if (apiConfig.apiProvider === 'groq') {
-        result = await this.mastra.generateText({
-          model: apiConfig.groqModel as string,
-          prompt: fullPrompt,
-          apiKey: apiConfig.groqApiKey as string,
-          provider: "groq"
-        });
-      } else {
-        result = await this.mastra.generateText({
-          model: apiConfig.ollamaModel as string,
-          prompt: fullPrompt,
-          baseUrl: apiConfig.ollamaUrl as string,
-          provider: "ollama" 
-        });
-      }
-      
-      return result.trim();
-    });
+    // No initialization needed - we'll use the callApi function directly
   }
   
   public async processTranscript(
@@ -178,16 +52,53 @@ ${input}`;
     try {
       // Step 1: Determine call disposition
       if (progressCallback) progressCallback(1, 3, "Determining call disposition...");
-      const disposition = await this.mastra.executeTask("classify_disposition", transcript);
+      
+      const dispositionMessages: ApiMessage[] = [
+        { role: 'system', content: this.dispositionSystemPrompt },
+        { role: 'user', content: `
+Please analyze the following healthcare call transcript and classify it into one of the call types.
+Transcript:
+${transcript}
+
+Respond with ONLY the classification as a single word, with no additional text.` }
+      ];
+      
+      const disposition = await callApi(dispositionMessages);
       
       // Step 2: Generate SOAP note
       if (progressCallback) progressCallback(2, 3, "Generating SOAP note...");
-      const soapText = await this.mastra.executeTask("generate_soap", { transcript, disposition });
+      
+      const soapMessages: ApiMessage[] = [
+        { role: 'system', content: this.soapGenerationPrompt },
+        { role: 'user', content: `
+Based on the following healthcare call transcript with disposition classified as ${disposition}, generate a comprehensive SOAP note.
+Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clinical accuracy, completeness,
+relevance, and actionability.
+
+TRANSCRIPT:
+${transcript}
+
+Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
+Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.` }
+      ];
+      
+      const soapText = await callApi(soapMessages);
       const soapNote = this.parseSOAPSections(soapText);
       
       // Step 3: Analyze sentiment
       if (progressCallback) progressCallback(3, 3, "Analyzing sentiment...");
-      const sentiment = await this.mastra.executeTask("analyze_sentiment", transcript);
+      
+      const sentimentMessages: ApiMessage[] = [
+        { role: 'system', content: this.sentimentAnalysisPrompt },
+        { role: 'user', content: `
+Analyze the sentiment in the following healthcare call transcript and categorize it as Satisfied, Neutral, or Dissatisfied.
+Only respond with one of these three sentiment categories and no other text.
+
+TRANSCRIPT:
+${transcript}` }
+      ];
+      
+      const sentiment = await callApi(sentimentMessages);
       
       return {
         soapNote,

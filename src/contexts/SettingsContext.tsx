@@ -40,7 +40,11 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [apiProvider, setProviderState] = useState<'ollama' | 'groq'>(() => getApiProvider());
+  const [apiProvider, setProviderState] = useState<'ollama' | 'groq'>(() => {
+    const config = getApiProvider();
+    return config.apiProvider;
+  });
+  
   const [ollamaUrl, setOllamaUrlState] = useState<string>(() => getOllamaUrl());
   const [ollamaModel, setOllamaModelState] = useState<string>(() => getOllamaModel() || 'llama3.1-8b-instant');
   const [groqApiKey, setGroqApiKeyState] = useState<string>(() => getGroqApiKey());

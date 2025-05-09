@@ -5,7 +5,13 @@ const OLLAMA_MODEL_LOCAL_STORAGE = 'OLLAMA_MODEL';
 const GROQ_API_KEY_LOCAL_STORAGE = 'GROQ_API_KEY';
 const GROQ_MODEL_LOCAL_STORAGE = 'GROQ_MODEL';
 
-export type ApiProvider = 'ollama' | 'groq';
+export type ApiProvider = {
+  apiProvider: 'ollama' | 'groq';
+  ollamaUrl?: string;
+  ollamaModel?: string;
+  groqApiKey?: string;
+  groqModel?: string;
+};
 
 export interface ApiMessage {
   role: 'system' | 'user' | 'assistant';
@@ -24,10 +30,18 @@ export interface ApiResponse {
 }
 
 export const getApiProvider = (): ApiProvider => {
-  return localStorage.getItem(API_PROVIDER_LOCAL_STORAGE) as ApiProvider || 'ollama';
+  const provider = localStorage.getItem(API_PROVIDER_LOCAL_STORAGE) as 'ollama' | 'groq' || 'ollama';
+  
+  return {
+    apiProvider: provider,
+    ollamaUrl: localStorage.getItem(OLLAMA_URL_LOCAL_STORAGE) || 'http://localhost:11434',
+    ollamaModel: localStorage.getItem(OLLAMA_MODEL_LOCAL_STORAGE) || 'llama3',
+    groqApiKey: localStorage.getItem(GROQ_API_KEY_LOCAL_STORAGE) || '',
+    groqModel: localStorage.getItem(GROQ_MODEL_LOCAL_STORAGE) || 'llama3-8b-8192',
+  };
 };
 
-export const setApiProvider = (provider: ApiProvider): void => {
+export const setApiProvider = (provider: 'ollama' | 'groq'): void => {
   localStorage.setItem(API_PROVIDER_LOCAL_STORAGE, provider);
 };
 
@@ -66,14 +80,14 @@ export const setGroqModel = (model: string): void => {
 };
 
 export const callApi = async (messages: ApiMessage[]): Promise<string> => {
-  const provider = getApiProvider();
+  const config = getApiProvider();
   
-  if (provider === 'ollama') {
+  if (config.apiProvider === 'ollama') {
     return callOllamaAPI(messages);
-  } else if (provider === 'groq') {
+  } else if (config.apiProvider === 'groq') {
     return callGroqAPI(messages);
   } else {
-    throw new Error(`Unknown API provider: ${provider}`);
+    throw new Error(`Unknown API provider: ${config.apiProvider}`);
   }
 };
 
@@ -159,8 +173,9 @@ export const checkOllamaIsRunning = async (url: string): Promise<boolean> => {
 
 // Call Ollama API
 const callOllamaAPI = async (messages: ApiMessage[]): Promise<string> => {
-  const ollamaUrl = getOllamaUrl();
-  const ollamaModel = getOllamaModel();
+  const config = getApiProvider();
+  const ollamaUrl = config.ollamaUrl;
+  const ollamaModel = config.ollamaModel;
   
   if (!ollamaUrl) {
     throw new Error('No Ollama URL configured. Please enter your Ollama URL in settings.');
@@ -207,8 +222,9 @@ const callOllamaAPI = async (messages: ApiMessage[]): Promise<string> => {
 
 // Call Groq API
 const callGroqAPI = async (messages: ApiMessage[]): Promise<string> => {
-  const groqApiKey = getGroqApiKey();
-  const groqModel = getGroqModel();
+  const config = getApiProvider();
+  const groqApiKey = config.groqApiKey;
+  const groqModel = config.groqModel;
   
   if (!groqApiKey) {
     throw new Error('No Groq API key configured. Please enter your Groq API key in settings.');
