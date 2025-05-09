@@ -1,3 +1,4 @@
+
 export type AgentType =
   | 'routing'
   | 'authorization'
@@ -66,6 +67,7 @@ export interface EvaluationResults {
 export interface AgentState {
   transcript?: string;
   disposition?: CallDisposition;
+  confidence?: number;
   extractedInfo: Record<string, any>;
   urgency?: {
     level: number;

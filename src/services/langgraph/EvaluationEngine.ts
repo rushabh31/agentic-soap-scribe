@@ -1,34 +1,21 @@
 
 import { LangGraphAgent } from './LangGraphAgent';
-import { AgentState } from '@/types/agent';
+import { AgentState, EvaluationResults } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
 const SYSTEM_PROMPT = `
-You are an Advanced Clinical Evaluation Engine specializing in analyzing healthcare documentation, particularly SOAP notes.
-Your task is to provide comprehensive, data-driven evaluations across multiple dimensions:
+You are an Evaluation Engine in a healthcare contact center multi-agent system.
+Your job is to evaluate the quality of generated SOAP notes and other outputs
+from both the multi-agent system and the sequential legacy system.
 
-1. Clinical Accuracy (40% of total score):
-   - Evidence-based assessment
-   - Proper clinical terminology
-   - Appropriate medical reasoning
-   - Consistency with presented data
+You should assess:
+1. Completeness - Are all relevant details included?
+2. Accuracy - Is all information factually correct?
+3. Clinical Relevance - Is the information clinically appropriate?
+4. Actionability - Are the plans and recommendations clear?
 
-2. Documentation Completeness (30% of total score):
-   - Coverage of all relevant information
-   - Appropriate level of detail
-   - Structured organization
-   - No critical omissions
-
-3. Actionability (30% of total score):
-   - Clear next steps
-   - Specific timelines
-   - Assigned responsibilities
-   - Measurable outcomes
-
-Provide your evaluation as a precise, structured JSON report with both qualitative analysis and quantitative scoring (0-100 for each dimension).
-Include specific strengths, areas for improvement, and actionable recommendations.
-
-You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
+Provide detailed evaluation with metrics and scores for each dimension.
+Respond in JSON format with comprehensive evaluation data.
 `;
 
 export class EvaluationEngine extends LangGraphAgent {
@@ -37,148 +24,154 @@ export class EvaluationEngine extends LangGraphAgent {
   }
 
   public async processState(state: AgentState): Promise<AgentState> {
-    // Only evaluate if we have a SOAP note
+    // Only proceed if we have a SOAP note to evaluate
     if (!state.soapNote) {
-      return this.sendMessage(state, 'Cannot evaluate without a SOAP note');
+      const message = {
+        id: uuidv4(),
+        from: 'evaluation' as any,
+        to: 'all' as any,
+        content: `Evaluation skipped: No SOAP note available to evaluate.`,
+        timestamp: Date.now()
+      };
+      
+      return {
+        ...state,
+        messages: [...state.messages, message]
+      };
     }
     
-    // Create evaluation prompt
-    const soapNote = state.soapNote;
-    const medicalInfo = state.medicalInfo || {};
-    const conditions = medicalInfo.conditions || [];
-    const procedures = medicalInfo.procedures || [];
-    const urgency = state.urgency || { level: 'Not assessed', reason: '' };
-    const disposition = state.disposition || 'general';
+    // Create context about the state for evaluation
+    const medicalInfoContext = state.medicalInfo || {};
+    const conditionCount = medicalInfoContext.conditions?.length || 0;
+    const procedureCount = medicalInfoContext.procedures?.length || 0;
     
     const prompt = `
-Please evaluate the quality of this healthcare SOAP note based on clinical accuracy, documentation completeness, and actionability.
+Please evaluate the quality of this SOAP note in the context of the original transcript.
+Consider completeness, accuracy, clinical relevance, and actionability.
 
-CONTEXT:
-Call Type: ${disposition}
-Urgency Level: ${urgency.level || 'Not assessed'} - ${urgency.reason || ''}
-Medical Information: Patient has ${conditions.length || 0} conditions, ${procedures.length || 0} procedures identified
+Original Transcript:
+${state.transcript || ""}
 
-SOAP NOTE TO EVALUATE:
+Medical Information Extracted:
+- Number of conditions: ${conditionCount}
+- Number of procedures: ${procedureCount}
+
+SOAP Note to Evaluate:
 SUBJECTIVE:
-${soapNote.subjective}
+${state.soapNote.subjective}
 
 OBJECTIVE:
-${soapNote.objective}
+${state.soapNote.objective}
 
 ASSESSMENT:
-${soapNote.assessment}
+${state.soapNote.assessment}
 
 PLAN:
-${soapNote.plan}
+${state.soapNote.plan}
 
-Provide your detailed evaluation as JSON with the following structure:
+Provide a comprehensive evaluation in JSON format with the following structure:
 {
-  "clinicalAccuracy": {
-    "score": 0-100,
-    "strengths": [],
-    "weaknesses": [],
-    "analysis": ""
-  },
-  "completeness": {
-    "score": 0-100,
-    "strengths": [],
-    "weaknesses": [],
-    "analysis": ""
-  },
-  "actionability": {
-    "score": 0-100,
-    "strengths": [],
-    "weaknesses": [],
-    "analysis": ""
-  },
-  "overallScore": 0-100,
-  "summary": "",
-  "recommendations": []
+  "overallScore": 85,
+  "summary": "Overall evaluation summary",
+  "recommendations": ["specific suggestion 1", "specific suggestion 2"],
+  "dimensions": {
+    "completeness": {
+      "score": 90,
+      "strengths": ["strength 1", "strength 2"],
+      "weaknesses": ["weakness 1"],
+      "analysis": "detailed analysis"
+    },
+    "accuracy": {
+      "score": 85,
+      "strengths": ["strength 1"],
+      "weaknesses": ["weakness 1", "weakness 2"],
+      "analysis": "detailed analysis"
+    },
+    "clinicalRelevance": {
+      "score": 80,
+      "strengths": ["strength 1"],
+      "weaknesses": ["weakness 1"],
+      "analysis": "detailed analysis"
+    },
+    "actionability": {
+      "score": 85,
+      "strengths": ["strength 1", "strength 2"],
+      "weaknesses": ["weakness 1"],
+      "analysis": "detailed analysis"
+    }
+  }
 }
-
-You can use the transcript_analysis tool to verify information against the original transcript if needed.
 `;
 
     // Call the LangGraph agent for evaluation
     const result = await this.process(state, prompt);
     
-    // Parse the evaluation results
-    let evaluation;
+    // Parse the response as JSON
+    let evaluationResults: EvaluationResults;
     try {
-      evaluation = JSON.parse(result.output);
-    } catch (error) {
-      console.error('Failed to parse Evaluation results as JSON:', error);
-      evaluation = { 
-        error: 'Failed to parse evaluation results', 
-        rawResponse: result.output,
-        overallScore: 0
+      const parsedResult = JSON.parse(result.output);
+      
+      // Structure the evaluation results
+      evaluationResults = {
+        overallScore: parsedResult.overallScore || 0,
+        summary: parsedResult.summary || "",
+        recommendations: parsedResult.recommendations || [],
+        multiAgent: {
+          soapNote: state.soapNote,
+          completeness: parsedResult.dimensions?.completeness,
+          accuracy: parsedResult.dimensions?.accuracy,
+          clinicalRelevance: parsedResult.dimensions?.clinicalRelevance,
+          actionability: parsedResult.dimensions?.actionability,
+          overallQuality: parsedResult.overallScore
+        },
+        sequential: {
+          // This would be populated later when comparing to another system
+          overallQuality: 0
+        }
       };
-    }
-
-    // Calculate weighted overall score if not already provided
-    if (!evaluation.overallScore && evaluation.clinicalAccuracy?.score) {
-      const clinicalScore = evaluation.clinicalAccuracy.score * 0.4;
-      const completenessScore = evaluation.completeness.score * 0.3;
-      const actionabilityScore = evaluation.actionability.score * 0.3;
-      evaluation.overallScore = Math.round(clinicalScore + completenessScore + actionabilityScore);
+    } catch (error) {
+      console.error('Failed to parse Evaluation Engine response as JSON:', error);
+      
+      // Create default evaluation results
+      evaluationResults = {
+        overallScore: 0,
+        summary: "Error parsing evaluation results",
+        multiAgent: {
+          soapNote: state.soapNote,
+          overallQuality: 0
+        },
+        sequential: {
+          overallQuality: 0
+        }
+      };
     }
 
     // Update the state with the evaluation results
     const updatedState = {
       ...state,
-      evaluationResults: {
-        overallScore: evaluation.overallScore || 0,
-        summary: evaluation.summary || '',
-        recommendations: evaluation.recommendations || [],
-        multiAgent: {
-          soapNote: state.soapNote,
-          completeness: evaluation.completeness || { score: 0, metrics: {} },
-          accuracy: evaluation.clinicalAccuracy || { score: 0, metrics: {} },
-          clinicalRelevance: {
-            score: evaluation.clinicalAccuracy?.score || 0,
-            metrics: evaluation.clinicalAccuracy?.metrics || {}
-          },
-          actionability: evaluation.actionability || { score: 0, metrics: {} },
-          overallQuality: evaluation.overallScore || 0
-        },
-        sequential: {
-          soapNote: state.soapNote,
-          completeness: evaluation.completeness || { score: 0, metrics: {} },
-          accuracy: evaluation.clinicalAccuracy || { score: 0, metrics: {} },
-          clinicalRelevance: {
-            score: evaluation.clinicalAccuracy?.score || 0,
-            metrics: evaluation.clinicalAccuracy?.metrics || {}
-          },
-          actionability: evaluation.actionability || { score: 0, metrics: {} },
-          overallQuality: evaluation.overallScore || 0
-        }
-      }
+      evaluationResults
     };
 
-    // Send a message with the evaluation summary
-    return this.sendMessage(updatedState, `
-Evaluation Complete: Overall Score ${evaluation.overallScore || 0}/100
-
-Clinical Accuracy: ${evaluation.clinicalAccuracy?.score || 0}/100
-Completeness: ${evaluation.completeness?.score || 0}/100
-Actionability: ${evaluation.actionability?.score || 0}/100
-
-Summary: ${evaluation.summary || "No summary available."}
-    `);
-  }
-  
-  private sendMessage(state: AgentState, content: string): AgentState {
+    // Send a message about the evaluation
+    const score = evaluationResults.overallScore;
+    const scoreCategory = 
+      score >= 90 ? 'Excellent' :
+      score >= 80 ? 'Very Good' :
+      score >= 70 ? 'Good' :
+      score >= 60 ? 'Satisfactory' :
+      'Needs Improvement';
+      
     const message = {
       id: uuidv4(),
-      from: 'evaluation' as any, // Type casting to match AgentType
+      from: 'evaluation' as any,
       to: 'all' as any,
-      content,
+      content: `Evaluation complete. Overall score: ${score}/100 (${scoreCategory}). ${evaluationResults.summary || ''}`,
       timestamp: Date.now()
     };
 
     return {
-      ...state,
-      messages: [...state.messages, message]
+      ...updatedState,
+      messages: [...updatedState.messages, message]
     };
   }
 }
