@@ -12,7 +12,7 @@ import { AuthorizationAgent } from './agents/AuthorizationAgent';
 import { ClaimsAgent } from './agents/ClaimsAgent';
 import { GeneralAgent } from './agents/GeneralAgent';
 import { StateGraph } from '@langchain/langgraph';
-import { END } from '@langchain/core/runnables';
+import { RunnableSequence } from '@langchain/core/runnables';
 
 export class MultiAgentSystem {
   private routingAgent: RoutingAgent;
@@ -60,26 +60,28 @@ export class MultiAgentSystem {
       // Create a StateGraph for the multi-agent system
       const builder = new StateGraph({
         channels: {
-          state: { value: state }
+          agentState: { value: state },
+          transcript: { value: "" }
         }
       });
 
       // Step 1: Route the call
-      builder.addNode("routing", async (input) => {
+      builder.addNode("routing", async (inputs) => {
         toast.info("Routing call...");
-        if (progressCallback) progressCallback(input.state, 1, 7, "routing", transcript, "Processing transcript for routing...");
+        const currentState = inputs.agentState;
+        if (progressCallback) progressCallback(currentState, 1, 7, "routing", transcript, "Processing transcript for routing...");
         
-        const updatedState = await this.routingAgent.processState(input.state);
+        const updatedState = await this.routingAgent.processState(currentState);
         
         if (progressCallback) progressCallback(updatedState, 1, 7, "routing", transcript, 
           `Disposition determined: ${updatedState.disposition || 'general inquiry'}`);
         
-        return { state: updatedState };
+        return { agentState: updatedState };
       });
 
       // Step 2: Process with the appropriate specialist agent based on disposition
-      builder.addNode("specialist", async (input) => {
-        const currentState = input.state;
+      builder.addNode("specialist", async (inputs) => {
+        const currentState = inputs.agentState;
         toast.info(`Processing with ${currentState.disposition || 'specialist'} agent...`);
         if (progressCallback) progressCallback(currentState, 2, 7);
         
@@ -106,53 +108,57 @@ export class MultiAgentSystem {
         
         if (progressCallback) progressCallback(updatedState, 2, 7, agentType, specialistInput, specialistOutput);
         
-        return { state: updatedState };
+        return { agentState: updatedState };
       });
 
       // Step 3: Process urgency analysis
-      builder.addNode("urgency", async (input) => {
-        if (progressCallback) progressCallback(input.state, 3, 7, "urgency", "Analyzing transcript urgency...", "Processing...");
-        const updatedState = await this.urgencyEngine.processState(input.state);
+      builder.addNode("urgency", async (inputs) => {
+        const currentState = inputs.agentState;
+        if (progressCallback) progressCallback(currentState, 3, 7, "urgency", "Analyzing transcript urgency...", "Processing...");
+        const updatedState = await this.urgencyEngine.processState(currentState);
         if (progressCallback) progressCallback(
           updatedState, 3, 7, 
           "urgency", 
           "Analyzing transcript urgency...", 
           `Urgency level determined: ${updatedState.urgency?.level || 'unknown'}`
         );
-        return { state: updatedState };
+        return { agentState: updatedState };
       });
 
       // Step 4: Process sentiment analysis
-      builder.addNode("sentiment", async (input) => {
-        if (progressCallback) progressCallback(input.state, 3, 7, "sentiment", "Analyzing sentiment...", "Processing...");
-        const updatedState = await this.sentimentEngine.processState(input.state);
+      builder.addNode("sentiment", async (inputs) => {
+        const currentState = inputs.agentState;
+        if (progressCallback) progressCallback(currentState, 3, 7, "sentiment", "Analyzing sentiment...", "Processing...");
+        const updatedState = await this.sentimentEngine.processState(currentState);
         if (progressCallback) progressCallback(
           updatedState, 3, 7, 
           "sentiment", 
           "Analyzing sentiment...", 
           `Sentiment analysis: ${updatedState.sentiment?.overall || 'neutral'} (score: ${updatedState.sentiment?.score || 0})`
         );
-        return { state: updatedState };
+        return { agentState: updatedState };
       });
 
       // Step 5: Process medical information extraction
-      builder.addNode("medical", async (input) => {
-        if (progressCallback) progressCallback(input.state, 3, 7, "medical", "Extracting medical information...", "Processing...");
-        const updatedState = await this.medicalExtractor.processState(input.state);
+      builder.addNode("medical", async (inputs) => {
+        const currentState = inputs.agentState;
+        if (progressCallback) progressCallback(currentState, 3, 7, "medical", "Extracting medical information...", "Processing...");
+        const updatedState = await this.medicalExtractor.processState(currentState);
         if (progressCallback) progressCallback(
           updatedState, 3, 7, 
           "medical", 
           "Extracting medical information...",
           `Medical information extracted: ${updatedState.medicalInfo?.conditions?.length || 0} conditions found`
         );
-        return { state: updatedState };
+        return { agentState: updatedState };
       });
 
       // Step 6: Generate SOAP note
-      builder.addNode("soap", async (input) => {
+      builder.addNode("soap", async (inputs) => {
+        const currentState = inputs.agentState;
         toast.info('Generating SOAP note...');
-        if (progressCallback) progressCallback(input.state, 4, 7, "soap_generator", "Generating SOAP note...", "Processing...");
-        const updatedState = await this.soapGenerator.processState(input.state);
+        if (progressCallback) progressCallback(currentState, 4, 7, "soap_generator", "Generating SOAP note...", "Processing...");
+        const updatedState = await this.soapGenerator.processState(currentState);
         if (progressCallback) progressCallback(
           updatedState, 4, 7, 
           "soap_generator", 
@@ -161,14 +167,15 @@ export class MultiAgentSystem {
             `${updatedState.soapNote.subjective.length + updatedState.soapNote.objective.length + 
             updatedState.soapNote.assessment.length + updatedState.soapNote.plan.length} characters` : 'error'}`
         );
-        return { state: updatedState };
+        return { agentState: updatedState };
       });
 
       // Step 7: Evaluate the results
-      builder.addNode("evaluation", async (input) => {
+      builder.addNode("evaluation", async (inputs) => {
+        const currentState = inputs.agentState;
         toast.info('Evaluating results...');
-        if (progressCallback) progressCallback(input.state, 5, 7, "evaluation", "Evaluating results...", "Processing...");
-        const updatedState = await this.evaluationEngine.processState(input.state);
+        if (progressCallback) progressCallback(currentState, 5, 7, "evaluation", "Evaluating results...", "Processing...");
+        const updatedState = await this.evaluationEngine.processState(currentState);
         if (progressCallback) {
           const score = updatedState.evaluationResults?.overallScore || 'N/A';
           progressCallback(
@@ -178,37 +185,32 @@ export class MultiAgentSystem {
             `Evaluation complete with score: ${score}/100`
           );
         }
-        return { state: updatedState };
+        return { agentState: updatedState };
       });
 
-      // Define the workflow
+      // Define the workflow - sequential for simplicity and to avoid errors
       builder.addEdge("routing", "specialist");
-      
-      // These three can run in parallel after specialist
       builder.addEdge("specialist", "urgency");
-      builder.addEdge("specialist", "sentiment");
-      builder.addEdge("specialist", "medical");
-      
-      // After all analysis is done, generate SOAP note
-      builder.addEdge("urgency", "soap");
-      builder.addEdge("sentiment", "soap");
+      builder.addEdge("urgency", "sentiment");
+      builder.addEdge("sentiment", "medical");
       builder.addEdge("medical", "soap");
-      
-      // Finally evaluate
       builder.addEdge("soap", "evaluation");
-      builder.addEdge("evaluation", END);
       
-      // Set the entry point
+      // Setting entry and finish point
       builder.setEntryPoint("routing");
+      builder.setFinishPoint("evaluation");
       
       // Compile and run the graph
       const graph = builder.compile();
       toast.info('Starting multi-agent processing...');
       
-      const result = await graph.invoke({ state });
+      const result = await graph.invoke({ 
+        agentState: state, 
+        transcript 
+      });
       
       toast.success('Processing complete!');
-      return result.state;
+      return result.agentState;
       
     } catch (error) {
       console.error('Error in multi-agent system:', error);

@@ -100,3 +100,6 @@ export function ModelSelector({ provider, value, onChange, isConnected }: ModelS
     </div>
   );
 }
+
+// Add this export as default to fix the import in ApiKeyForm
+export default ModelSelector;

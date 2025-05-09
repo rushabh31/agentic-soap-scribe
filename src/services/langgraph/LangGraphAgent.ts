@@ -2,7 +2,7 @@
 import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from '../apiService';
 import { StateGraph } from '@langchain/langgraph';
-import { END, RunnableSequence } from '@langchain/core/runnables';
+import { RunnableSequence } from '@langchain/core/runnables';
 
 export class LangGraphAgent {
   protected systemPrompt: string;
@@ -14,8 +14,10 @@ export class LangGraphAgent {
   }
 
   protected createGraph() {
-    const processNode = async (state: AgentState, input: string) => {
+    const processNode = async (state: any) => {
       try {
+        const input = state.input || "";
+        
         // Create a simple prompt with system prompt and user input
         const messages: ApiMessage[] = [
           { role: 'system', content: this.systemPrompt },
@@ -27,7 +29,7 @@ export class LangGraphAgent {
         
         return {
           output,
-          state
+          state: state.state
         };
       } catch (error) {
         console.error(`Error in ${this.agentType} agent:`, error);
@@ -38,6 +40,7 @@ export class LangGraphAgent {
     // Create a simple graph with one node
     const builder = new StateGraph({
       channels: {
+        input: { value: "" },
         output: { value: "" },
         state: { value: {} as AgentState }
       }
@@ -51,8 +54,8 @@ export class LangGraphAgent {
     // Set the entry point
     builder.setEntryPoint("process");
 
-    // Set the exit point
-    builder.addEdge("process", END);
+    // Set the exit point - we'll use "process" as the endpoint
+    builder.setFinishPoint("process");
 
     return builder.compile();
   }
@@ -60,9 +63,10 @@ export class LangGraphAgent {
   public async process(state: AgentState, input: string): Promise<{ output: string; state: AgentState }> {
     const graph = this.createGraph();
     const result = await graph.invoke({
+      input,
       output: "",
       state
-    }, { input });
+    });
     
     return {
       output: result.output,

@@ -80,6 +80,7 @@ export interface EvaluationDimension {
   analysis?: string;
 }
 
+// Updated to match the implementation in evaluator files
 export interface EvaluationResults {
   clinicalAccuracy?: EvaluationDimension;
   completeness?: EvaluationDimension;
@@ -89,4 +90,22 @@ export interface EvaluationResults {
   recommendations?: string[];
   error?: string;
   rawResponse?: string;
+  
+  // Added for compatibility with clinical and actionability evaluators
+  multiAgent?: {
+    soapNote?: SOAPNote;
+    completeness?: EvaluationDimension;
+    accuracy?: EvaluationDimension;
+    clinicalRelevance?: EvaluationDimension;
+    actionability?: EvaluationDimension;
+    overallQuality?: number;
+  };
+  sequential?: {
+    soapNote?: SOAPNote;
+    completeness?: EvaluationDimension;
+    accuracy?: EvaluationDimension;
+    clinicalRelevance?: EvaluationDimension;
+    actionability?: EvaluationDimension;
+    overallQuality?: number;
+  };
 }

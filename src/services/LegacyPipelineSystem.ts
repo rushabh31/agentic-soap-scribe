@@ -5,7 +5,7 @@ import { callApi, ApiMessage } from './apiService';
 import { toast } from 'sonner';
 import { SOAPNote } from '@/types/agent';
 import { StateGraph } from '@langchain/langgraph';
-import { END, RunnableSequence } from '@langchain/core/runnables';
+import { RunnableSequence } from '@langchain/core/runnables';
 
 export class LegacyPipelineSystem {
   private dispositionSystemPrompt = `
@@ -44,7 +44,7 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
 `;
   
   constructor() {
-    // No initialization needed - we'll use the StateGraph from LangGraph
+    // No initialization needed
   }
   
   public async processTranscript(
@@ -57,12 +57,13 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
         channels: {
           disposition: { value: "" },
           soapNote: { value: {} as SOAPNote },
-          sentiment: { value: "" }
+          sentiment: { value: "" },
+          transcript: { value: "" }
         }
       });
 
       // Step 1: Determine call disposition
-      builder.addNode("disposition", async () => {
+      builder.addNode("disposition", async (state) => {
         if (progressCallback) progressCallback(1, 3, "Determining call disposition...");
         
         const dispositionMessages: ApiMessage[] = [
@@ -70,7 +71,7 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
           { role: 'user', content: `
 Please analyze the following healthcare call transcript and classify it into one of the call types.
 Transcript:
-${transcript}
+${state.transcript}
 
 Respond with ONLY the classification as a single word, with no additional text.` }
         ];
@@ -91,7 +92,7 @@ Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clin
 relevance, and actionability.
 
 TRANSCRIPT:
-${transcript}
+${state.transcript}
 
 Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
 Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.` }
@@ -104,7 +105,7 @@ Make each section detailed and complete. Ensure the Plan section contains specif
       });
 
       // Step 3: Analyze sentiment
-      builder.addNode("sentiment", async () => {
+      builder.addNode("sentiment", async (state) => {
         if (progressCallback) progressCallback(3, 3, "Analyzing sentiment...");
         
         const sentimentMessages: ApiMessage[] = [
@@ -114,17 +115,19 @@ Analyze the sentiment in the following healthcare call transcript and categorize
 Only respond with one of these three sentiment categories and no other text.
 
 TRANSCRIPT:
-${transcript}` }
+${state.transcript}` }
         ];
         
         const sentiment = await callApi(sentimentMessages);
         return { sentiment: sentiment.trim() };
       });
 
-      // Define edges
+      // Define edges in the graph
       builder.addEdge("disposition", "soap");
       builder.addEdge("soap", "sentiment");
-      builder.addEdge("sentiment", END);
+      
+      // Define the finish point
+      builder.setFinishPoint("sentiment");
       
       // Set the entry point
       builder.setEntryPoint("disposition");
@@ -134,7 +137,8 @@ ${transcript}` }
       const result = await graph.invoke({
         disposition: "",
         soapNote: {} as SOAPNote,
-        sentiment: ""
+        sentiment: "",
+        transcript
       });
       
       return {
