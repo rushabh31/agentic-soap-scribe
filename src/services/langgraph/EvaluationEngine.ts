@@ -1,5 +1,5 @@
 
-import { MastraAgent } from './MastraAgent';
+import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,12 +29,12 @@ Provide your evaluation as a precise, structured JSON report with both qualitati
 Include specific strengths, areas for improvement, and actionable recommendations.
 `;
 
-export class EvaluationEngine extends MastraAgent {
+export class EvaluationEngine extends LangGraphAgent {
   constructor() {
     super('evaluation', SYSTEM_PROMPT);
   }
 
-  public async process(state: AgentState): Promise<AgentState> {
+  public async processState(state: AgentState): Promise<AgentState> {
     // Only evaluate if we have a SOAP note
     if (!state.soapNote) {
       return this.sendMessage(state, 'Cannot evaluate without a SOAP note');
@@ -93,8 +93,8 @@ Provide your detailed evaluation as JSON with the following structure:
 }
 `;
 
-    // Call the parent process method which will use Mastra
-    const result = await super.process(state, prompt);
+    // Call the LangGraph agent for evaluation
+    const result = await this.process(state, prompt);
     
     // Parse the evaluation results
     let evaluation;

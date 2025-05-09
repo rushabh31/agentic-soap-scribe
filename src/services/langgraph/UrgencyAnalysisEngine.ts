@@ -1,5 +1,5 @@
 
-import { MastraAgent } from './MastraAgent';
+import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,12 +22,12 @@ Rate urgency on a 0-10 scale where:
 Respond with only a JSON object containing the urgency assessment.
 `;
 
-export class UrgencyAnalysisEngine extends MastraAgent {
+export class UrgencyAnalysisEngine extends LangGraphAgent {
   constructor() {
     super('urgency', SYSTEM_PROMPT);
   }
 
-  public async process(state: AgentState): Promise<AgentState> {
+  public async processState(state: AgentState): Promise<AgentState> {
     // Extract urgency information
     const prompt = `
 Please analyze the urgency level of this healthcare call transcript.
@@ -61,8 +61,8 @@ Format your response as valid JSON with the following structure ONLY:
 }
 `;
 
-    // Call the Mastra agent for analysis
-    const result = await super.process(state, prompt);
+    // Call the LangGraph agent for analysis
+    const result = await this.process(state, prompt);
     
     // Parse the response as JSON
     let urgencyAnalysis;

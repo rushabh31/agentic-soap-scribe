@@ -1,5 +1,5 @@
 
-import { MastraAgent } from './MastraAgent';
+import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState, SentimentType } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,12 +17,12 @@ Unlike basic sentiment analysis, you should:
 Respond ONLY in valid JSON format with detailed sentiment analysis.
 `;
 
-export class SentimentAnalysisEngine extends MastraAgent {
+export class SentimentAnalysisEngine extends LangGraphAgent {
   constructor() {
     super('sentiment', SYSTEM_PROMPT);
   }
 
-  public async process(state: AgentState): Promise<AgentState> {
+  public async processState(state: AgentState): Promise<AgentState> {
     // Analyze sentiment
     const prompt = `
 Please perform detailed sentiment analysis on this healthcare call transcript.
@@ -55,8 +55,8 @@ Return your analysis ONLY as valid JSON with the following structure:
 }
 `;
 
-    // Call the Mastra agent for analysis
-    const result = await super.process(state, prompt);
+    // Call the LangGraph agent for analysis
+    const result = await this.process(state, prompt);
     
     // Parse the response as JSON
     let sentimentAnalysis;

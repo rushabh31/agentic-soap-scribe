@@ -1,5 +1,5 @@
 
-import { MastraAgent } from './MastraAgent';
+import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState, SOAPNote } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,12 +32,12 @@ Your task is to synthesize information into a structured SOAP note that follows 
 Your output will be directly reviewed by healthcare professionals and must meet strict clinical documentation standards. Do not omit critical details, and do not include information that cannot be verified from the transcript.
 `;
 
-export class SOAPGenerator extends MastraAgent {
+export class SOAPGenerator extends LangGraphAgent {
   constructor() {
     super('soap_generator', SYSTEM_PROMPT);
   }
 
-  public async process(state: AgentState): Promise<AgentState> {
+  public async processState(state: AgentState): Promise<AgentState> {
     // Create context for the SOAP generation based on all gathered information
     const context = JSON.stringify({
       disposition: state.disposition,
@@ -69,8 +69,8 @@ ${state.transcript}
 Remember: Accuracy is critical. Healthcare professionals will rely on this documentation. Format your response with the exact headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
 `;
 
-    // Call the Mastra agent for SOAP generation
-    const result = await super.process(state, prompt);
+    // Call the LangGraph agent for SOAP generation
+    const result = await this.process(state, prompt);
     
     // Parse the SOAP sections
     const sections = this.parseSOAPSections(result.output);

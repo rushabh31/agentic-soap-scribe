@@ -1,5 +1,5 @@
 
-import { MastraAgent } from './MastraAgent';
+import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState, CallDisposition } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,12 +17,12 @@ Be very precise in your analysis and base your classification solely on the cont
 Respond ONLY with the call type as a single word, no additional text.
 `;
 
-export class RoutingAgent extends MastraAgent {
+export class RoutingAgent extends LangGraphAgent {
   constructor() {
     super('routing', SYSTEM_PROMPT);
   }
 
-  public async process(state: AgentState): Promise<AgentState> {
+  public async processState(state: AgentState): Promise<AgentState> {
     // First, analyze the transcript to determine the call type
     const prompt = `
 Please analyze the following healthcare call transcript and classify it into one of the call types:
@@ -34,8 +34,8 @@ ${state.transcript}
 Respond with ONLY the classification as a single word, with no additional text.
 `;
 
-    // Call the Mastra agent to get the disposition
-    const result = await super.process(state, prompt);
+    // Call the LangGraph agent to get the disposition
+    const result = await this.process(state, prompt);
     const disposition = result.output.trim().toLowerCase() as CallDisposition;
 
     // Update the state with the disposition

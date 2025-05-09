@@ -4,6 +4,8 @@ import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from './apiService';
 import { toast } from 'sonner';
 import { SOAPNote } from '@/types/agent';
+import { StateGraph } from '@langchain/langgraph';
+import { END, RunnableSequence } from '@langchain/core/runnables';
 
 export class LegacyPipelineSystem {
   private dispositionSystemPrompt = `
@@ -42,7 +44,7 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
 `;
   
   constructor() {
-    // No initialization needed - we'll use the callApi function directly
+    // No initialization needed - we'll use the StateGraph from LangGraph
   }
   
   public async processTranscript(
@@ -50,28 +52,41 @@ Return only the sentiment category (Satisfied, Neutral, or Dissatisfied) without
     progressCallback?: (step: number, totalSteps: number, message: string) => void
   ): Promise<{ soapNote: SOAPNote, disposition: string, sentiment: string }> {
     try {
+      // Create a StateGraph for the legacy pipeline
+      const builder = new StateGraph({
+        channels: {
+          disposition: { value: "" },
+          soapNote: { value: {} as SOAPNote },
+          sentiment: { value: "" }
+        }
+      });
+
       // Step 1: Determine call disposition
-      if (progressCallback) progressCallback(1, 3, "Determining call disposition...");
-      
-      const dispositionMessages: ApiMessage[] = [
-        { role: 'system', content: this.dispositionSystemPrompt },
-        { role: 'user', content: `
+      builder.addNode("disposition", async () => {
+        if (progressCallback) progressCallback(1, 3, "Determining call disposition...");
+        
+        const dispositionMessages: ApiMessage[] = [
+          { role: 'system', content: this.dispositionSystemPrompt },
+          { role: 'user', content: `
 Please analyze the following healthcare call transcript and classify it into one of the call types.
 Transcript:
 ${transcript}
 
 Respond with ONLY the classification as a single word, with no additional text.` }
-      ];
-      
-      const disposition = await callApi(dispositionMessages);
-      
+        ];
+        
+        const disposition = await callApi(dispositionMessages);
+        return { disposition: disposition.trim().toLowerCase() };
+      });
+
       // Step 2: Generate SOAP note
-      if (progressCallback) progressCallback(2, 3, "Generating SOAP note...");
-      
-      const soapMessages: ApiMessage[] = [
-        { role: 'system', content: this.soapGenerationPrompt },
-        { role: 'user', content: `
-Based on the following healthcare call transcript with disposition classified as ${disposition}, generate a comprehensive SOAP note.
+      builder.addNode("soap", async (state) => {
+        if (progressCallback) progressCallback(2, 3, "Generating SOAP note...");
+        
+        const soapMessages: ApiMessage[] = [
+          { role: 'system', content: this.soapGenerationPrompt },
+          { role: 'user', content: `
+Based on the following healthcare call transcript with disposition classified as ${state.disposition}, generate a comprehensive SOAP note.
 Follow the SOAP format (Subjective, Objective, Assessment, Plan) and ensure clinical accuracy, completeness,
 relevance, and actionability.
 
@@ -80,30 +95,52 @@ ${transcript}
 
 Format your response with clear section headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
 Make each section detailed and complete. Ensure the Plan section contains specific, actionable steps.` }
-      ];
-      
-      const soapText = await callApi(soapMessages);
-      const soapNote = this.parseSOAPSections(soapText);
-      
+        ];
+        
+        const soapText = await callApi(soapMessages);
+        const soapNote = this.parseSOAPSections(soapText);
+        
+        return { soapNote };
+      });
+
       // Step 3: Analyze sentiment
-      if (progressCallback) progressCallback(3, 3, "Analyzing sentiment...");
-      
-      const sentimentMessages: ApiMessage[] = [
-        { role: 'system', content: this.sentimentAnalysisPrompt },
-        { role: 'user', content: `
+      builder.addNode("sentiment", async () => {
+        if (progressCallback) progressCallback(3, 3, "Analyzing sentiment...");
+        
+        const sentimentMessages: ApiMessage[] = [
+          { role: 'system', content: this.sentimentAnalysisPrompt },
+          { role: 'user', content: `
 Analyze the sentiment in the following healthcare call transcript and categorize it as Satisfied, Neutral, or Dissatisfied.
 Only respond with one of these three sentiment categories and no other text.
 
 TRANSCRIPT:
 ${transcript}` }
-      ];
+        ];
+        
+        const sentiment = await callApi(sentimentMessages);
+        return { sentiment: sentiment.trim() };
+      });
+
+      // Define edges
+      builder.addEdge("disposition", "soap");
+      builder.addEdge("soap", "sentiment");
+      builder.addEdge("sentiment", END);
       
-      const sentiment = await callApi(sentimentMessages);
+      // Set the entry point
+      builder.setEntryPoint("disposition");
+      
+      // Compile and run the graph
+      const graph = builder.compile();
+      const result = await graph.invoke({
+        disposition: "",
+        soapNote: {} as SOAPNote,
+        sentiment: ""
+      });
       
       return {
-        soapNote,
-        disposition,
-        sentiment
+        soapNote: result.soapNote,
+        disposition: result.disposition,
+        sentiment: result.sentiment
       };
       
     } catch (error) {

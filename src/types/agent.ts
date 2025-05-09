@@ -10,7 +10,8 @@ export type AgentType =
   | 'soap_generator'
   | 'clinical_evaluator'
   | 'completeness_evaluator'
-  | 'actionability_evaluator';
+  | 'actionability_evaluator'
+  | 'evaluation';
 
 export type CallDisposition =
   | 'authorization'
@@ -37,17 +38,22 @@ export interface AgentState {
   urgency?: {
     level: number;
     reason: string;
+    details?: any;
   };
   sentiment?: {
     overall: SentimentType;
     score: number;
     details: string;
+    fullAnalysis?: any;
   };
   medicalInfo?: {
-    conditions: string[];
-    procedures: string[];
-    symptoms: string[];
-    timeline: string;
+    conditions: any[];
+    procedures: any[];
+    symptoms: any[];
+    medications?: any[];
+    medicalHistory?: string;
+    timeline?: string;
+    providers?: any[];
   };
   soapNote?: SOAPNote;
   evaluationResults?: EvaluationResults;
@@ -69,23 +75,18 @@ export interface EvaluationMetric {
 export interface EvaluationDimension {
   score: number;
   metrics: Record<string, EvaluationMetric>;
+  strengths?: string[];
+  weaknesses?: string[];
+  analysis?: string;
 }
 
 export interface EvaluationResults {
-  multiAgent: {
-    completeness: EvaluationDimension;
-    accuracy: EvaluationDimension;
-    clinicalRelevance: EvaluationDimension;
-    actionability: EvaluationDimension;
-    overallQuality: number;
-    soapNote?: SOAPNote;
-  };
-  sequential: {
-    completeness: EvaluationDimension;
-    accuracy: EvaluationDimension;
-    clinicalRelevance: EvaluationDimension;
-    actionability: EvaluationDimension;
-    overallQuality: number;
-    soapNote?: SOAPNote;
-  };
+  clinicalAccuracy?: EvaluationDimension;
+  completeness?: EvaluationDimension;
+  actionability?: EvaluationDimension;
+  overallScore: number;
+  summary?: string;
+  recommendations?: string[];
+  error?: string;
+  rawResponse?: string;
 }

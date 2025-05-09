@@ -1,5 +1,5 @@
 
-import { MastraAgent } from './MastraAgent';
+import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,12 +18,12 @@ Focus on extracting factual medical information with clinical precision.
 Respond in JSON format with structured medical information.
 `;
 
-export class MedicalInformationExtractor extends MastraAgent {
+export class MedicalInformationExtractor extends LangGraphAgent {
   constructor() {
     super('medical', SYSTEM_PROMPT);
   }
 
-  public async process(state: AgentState): Promise<AgentState> {
+  public async processState(state: AgentState): Promise<AgentState> {
     // Extract medical information
     const prompt = `
 Please extract all medical information from this healthcare call transcript.
@@ -76,8 +76,8 @@ Format your response as valid JSON with the following structure ONLY:
 }
 `;
 
-    // Call the Mastra agent for extraction
-    const result = await super.process(state, prompt);
+    // Call the LangGraph agent for extraction
+    const result = await this.process(state, prompt);
     
     // Parse the response as JSON
     let medicalInfo;
