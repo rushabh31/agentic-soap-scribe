@@ -1,11 +1,11 @@
+
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { AgentState, SOAPNote, AgentMessage } from '@/types/agent';
+import { AgentState, SOAPNote, AgentMessage, CallDisposition, ProcessingProgress } from '@/types/agent';
 import { MultiAgentSystem } from '@/services/MultiAgentSystem';
 import { LegacyPipelineSystem } from '@/services/LegacyPipelineSystem';
 import { useSettings } from './SettingsContext';
 import { healthcareSystem } from '@/services/HealthcareContactCenterSystem';
-import { CallDisposition } from '@/types/healthcare';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner'; // Using sonner instead of react-toastify
 
 export interface ComparisonResult {
   winner: 'multiagent' | 'legacy' | 'tie';
@@ -34,6 +34,14 @@ interface AgentContextType {
   sequentialState: AgentState | null;
   comparisonResult: ComparisonResult | null;
   isProcessing: boolean;
+  progress: ProcessingProgress;
+  currentAgent: string | null;
+  agentInput: string | null;
+  agentOutput: string | null;
+  legacyResult: any | null;
+  comparison: any | null;
+  evaluationResults: any | null;
+  hasApiConfig: boolean;
   processTranscript: (transcript: string) => Promise<AgentState>;
   processWithAgents: (transcript: string) => Promise<void>;
   processWithSequential: (transcript: string) => Promise<void>;
@@ -46,12 +54,25 @@ const defaultAgentState: AgentState = {
   messages: []
 };
 
+const defaultProgress: ProcessingProgress = {
+  step: 0,
+  total: 10
+};
+
 const AgentContext = createContext<AgentContextType>({
   state: defaultAgentState,
   multiAgentState: null,
   sequentialState: null,
   comparisonResult: null,
   isProcessing: false,
+  progress: defaultProgress,
+  currentAgent: null,
+  agentInput: null,
+  agentOutput: null,
+  legacyResult: null,
+  comparison: null,
+  evaluationResults: null,
+  hasApiConfig: false,
   processTranscript: async () => defaultAgentState,
   processWithAgents: async () => {},
   processWithSequential: async () => {},
@@ -67,15 +88,38 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [sequentialState, setSequentialState] = useState<AgentState | null>(null);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [progress, setProgress] = useState<ProcessingProgress>(defaultProgress);
+  const [currentAgent, setCurrentAgent] = useState<string | null>(null);
+  const [agentInput, setAgentInput] = useState<string | null>(null);
+  const [agentOutput, setAgentOutput] = useState<string | null>(null);
+  const [legacyResult, setLegacyResult] = useState<any | null>(null);
+  const [comparison, setComparison] = useState<any | null>(null);
+  const [evaluationResults, setEvaluationResults] = useState<any | null>(null);
 
   const multiAgentSystem = new MultiAgentSystem();
   const legacyPipelineSystem = new LegacyPipelineSystem();
-  const { hasApiConfig, isOllamaConnected, isOllamaModelConnected, apiProvider, isGroqConnected, isGroqModelConnected } = useSettings();
+  const { apiProvider, isOllamaConnected, isOllamaModelConnected, isGroqConnected, isGroqModelConnected } = useSettings();
   
   // Consider API config valid based on selected provider
-  const isApiConfigValid = apiProvider === 'ollama' 
-    ? hasApiConfig && isOllamaConnected && isOllamaModelConnected 
-    : hasApiConfig && isGroqConnected && isGroqModelConnected;
+  const hasApiConfig = apiProvider === 'ollama' 
+    ? isOllamaConnected && isOllamaModelConnected 
+    : isGroqConnected && isGroqModelConnected;
+  
+  const setProcessingProgress = (data: {
+    currentStep: number;
+    totalSteps: number;
+    agentType?: string;
+    input?: string;
+    output?: string;
+  }) => {
+    setProgress({
+      step: data.currentStep,
+      total: data.totalSteps
+    });
+    setCurrentAgent(data.agentType || null);
+    setAgentInput(data.input || null);
+    setAgentOutput(data.output || null);
+  };
   
   // Process transcript through multi-agent system and sequential pipeline
   const processTranscript = useCallback(async (transcript: string): Promise<AgentState> => {
@@ -104,24 +148,49 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           winner: finalState.evaluationResults.winner || 'tie',
           reasoning: finalState.evaluationResults.reasoning || '',
           multiAgent: {
-            completeness: finalState.evaluationResults.multiAgent.completeness || { score: 0, comments: '' },
-            accuracy: finalState.evaluationResults.multiAgent.accuracy || { score: 0, comments: '' },
-            clinicalRelevance: finalState.evaluationResults.multiAgent.clinicalRelevance || { score: 0, comments: '' },
-            actionability: finalState.evaluationResults.multiAgent.actionability || { score: 0, comments: '' },
+            completeness: { 
+              score: finalState.evaluationResults.multiAgent.completeness?.score || 0, 
+              comments: finalState.evaluationResults.multiAgent.completeness?.comments || '' 
+            },
+            accuracy: { 
+              score: finalState.evaluationResults.multiAgent.accuracy?.score || 0, 
+              comments: finalState.evaluationResults.multiAgent.accuracy?.comments || '' 
+            },
+            clinicalRelevance: { 
+              score: finalState.evaluationResults.multiAgent.clinicalRelevance?.score || 0, 
+              comments: finalState.evaluationResults.multiAgent.clinicalRelevance?.comments || '' 
+            },
+            actionability: { 
+              score: finalState.evaluationResults.multiAgent.actionability?.score || 0, 
+              comments: finalState.evaluationResults.multiAgent.actionability?.comments || '' 
+            },
             overallQuality: finalState.evaluationResults.multiAgent.overallQuality || 0,
             soapNote: finalState.evaluationResults.multiAgent.soapNote
           },
           sequential: {
-            completeness: finalState.evaluationResults.sequential.completeness || { score: 0, comments: '' },
-            accuracy: finalState.evaluationResults.sequential.accuracy || { score: 0, comments: '' },
-            clinicalRelevance: finalState.evaluationResults.sequential.clinicalRelevance || { score: 0, comments: '' },
-            actionability: finalState.evaluationResults.sequential.actionability || { score: 0, comments: '' },
+            completeness: { 
+              score: finalState.evaluationResults.sequential.completeness?.score || 0, 
+              comments: finalState.evaluationResults.sequential.completeness?.comments || '' 
+            },
+            accuracy: { 
+              score: finalState.evaluationResults.sequential.accuracy?.score || 0, 
+              comments: finalState.evaluationResults.sequential.accuracy?.comments || '' 
+            },
+            clinicalRelevance: { 
+              score: finalState.evaluationResults.sequential.clinicalRelevance?.score || 0, 
+              comments: finalState.evaluationResults.sequential.clinicalRelevance?.comments || '' 
+            },
+            actionability: { 
+              score: finalState.evaluationResults.sequential.actionability?.score || 0, 
+              comments: finalState.evaluationResults.sequential.actionability?.comments || '' 
+            },
             overallQuality: finalState.evaluationResults.sequential.overallQuality || 0,
             soapNote: finalState.evaluationResults.sequential.soapNote
           }
         };
         
         setComparisonResult(comparisonResult);
+        setEvaluationResults(finalState.evaluationResults);
       }
       
       return finalState;
@@ -131,7 +200,10 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       throw error;
     } finally {
       setIsProcessing(false);
-      resetProcessingState();
+      setProcessingProgress({
+        currentStep: 0,
+        totalSteps: 10
+      });
     }
   }, []);
 
@@ -160,7 +232,10 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       toast.error(`Failed to process with agents: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsProcessing(false);
-      resetProcessingState();
+      setProcessingProgress({
+        currentStep: 0,
+        totalSteps: 10
+      });
     }
   }, []);
 
@@ -186,21 +261,24 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       setSequentialState(sequentialState);
       setAgentState(sequentialState);
+      setLegacyResult(result);
     } catch (error) {
       console.error('Error processing with sequential pipeline:', error);
       toast.error(`Failed to process sequentially: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsProcessing(false);
-      resetProcessingState();
+      setProcessingProgress({
+        currentStep: 0,
+        totalSteps: 10
+      });
     }
   }, []);
 
   const resetProcessingState = () => {
-    setProcessingProgress(null);
-    setAgentState(defaultAgentState);
-    setMultiAgentState(null);
-    setSequentialState(null);
-    setComparisonResult(null);
+    setProgress(defaultProgress);
+    setCurrentAgent(null);
+    setAgentInput(null);
+    setAgentOutput(null);
   };
 
   const clearState = () => {
@@ -208,6 +286,9 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setMultiAgentState(null);
     setSequentialState(null);
     setComparisonResult(null);
+    setEvaluationResults(null);
+    setLegacyResult(null);
+    setComparison(null);
   };
 
   return (
@@ -217,6 +298,14 @@ export const AgentProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       sequentialState,
       comparisonResult,
       isProcessing,
+      progress,
+      currentAgent,
+      agentInput,
+      agentOutput,
+      legacyResult,
+      comparison,
+      evaluationResults,
+      hasApiConfig,
       processTranscript,
       processWithAgents,
       processWithSequential,

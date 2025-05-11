@@ -1,5 +1,6 @@
-import { AgentState, SOAPNote, DocumentationResult, MedicalInfo, TopicResult, CallDisposition, SentimentType } from '@/types/agent';
-import { callApi } from './apiService';
+
+import { AgentState, SOAPNote, DocumentationResult, MedicalInfo, TopicResult, CallDisposition, SentimentType, EvaluationResults } from '@/types/agent';
+import { callApi, ApiMessage } from './apiService';
 import { MultiAgentSystem } from './MultiAgentSystem';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
@@ -147,7 +148,7 @@ export class HealthcareContactCenterSystem {
    */
   
   private async identifyDisposition(transcript: string): Promise<{ disposition: CallDisposition; confidence: number }> {
-    const messages = [
+    const messages: ApiMessage[] = [
       { 
         role: 'system', 
         content: `You are a healthcare contact center expert. Your task is to identify the disposition (type) of this call. 
@@ -208,7 +209,7 @@ export class HealthcareContactCenterSystem {
     
     const promptTemplate = dispositionPrompts[disposition] || dispositionPrompts.default;
     
-    const messages = [
+    const messages: ApiMessage[] = [
       { 
         role: 'system', 
         content: `You are a clinical documentation specialist in a healthcare contact center. 
@@ -226,7 +227,7 @@ export class HealthcareContactCenterSystem {
   }
   
   private async analyzeSentiment(transcript: string): Promise<{ sentiment: SentimentType; score: number }> {
-    const messages = [
+    const messages: ApiMessage[] = [
       { 
         role: 'system', 
         content: `You are a sentiment analysis expert in healthcare communications. 
@@ -253,7 +254,7 @@ export class HealthcareContactCenterSystem {
   }
   
   private async assignTopicLabels(transcript: string, disposition: string): Promise<TopicResult> {
-    const messages = [
+    const messages: ApiMessage[] = [
       { 
         role: 'system', 
         content: `You are a healthcare topic classification expert. 
@@ -311,7 +312,7 @@ export class HealthcareContactCenterSystem {
       overallQuality: number;
     };
   }> {
-    const messages = [
+    const messages: ApiMessage[] = [
       { 
         role: 'system', 
         content: `You are a healthcare documentation evaluation expert. Compare these two SOAP notes generated from the same transcript - 

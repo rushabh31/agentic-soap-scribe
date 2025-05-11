@@ -32,7 +32,7 @@ ${state.transcript}
 
 Format your response as valid JSON with the following structure:
 {
-  "overallSentiment": "positive", "neutral", or "negative",
+  "overallSentiment": "satisfied", "neutral", or "dissatisfied",
   "sentimentScore": -10 to 10,
   "sentimentShifts": [
     {
@@ -69,8 +69,8 @@ Format your response as valid JSON with the following structure:
     let sentimentType: SentimentType = 'neutral';
     const sentimentScore = sentimentAnalysis.sentimentScore || 0;
     
-    if (sentimentScore > 3) sentimentType = 'positive';
-    else if (sentimentScore < -3) sentimentType = 'negative';
+    if (sentimentScore > 3) sentimentType = 'satisfied';
+    else if (sentimentScore < -3) sentimentType = 'dissatisfied';
     
     // Update the state with sentiment information
     const updatedState = {

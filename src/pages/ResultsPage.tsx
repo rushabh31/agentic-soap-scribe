@@ -285,11 +285,11 @@ const ResultsPage = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Sentiment:</span>
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            state.sentiment.overall === 'positive' ? 'bg-green-100 text-green-800' :
-                            state.sentiment.overall === 'negative' ? 'bg-red-100 text-red-800' :
+                            state.sentiment?.overall === 'satisfied' ? 'bg-green-100 text-green-800' :
+                            state.sentiment?.overall === 'dissatisfied' ? 'bg-red-100 text-red-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {state.sentiment.overall} ({state.sentiment.score})
+                            {state.sentiment?.overall} ({state.sentiment?.score})
                           </span>
                         </div>
                       )}

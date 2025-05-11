@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { SOAPNote, CallDisposition } from '@/types/agent';
 import { ApiMessage, callApi } from './apiService';
@@ -55,7 +54,7 @@ export class LegacyPipelineSystem {
     const messages: ApiMessage[] = [
       { 
         role: 'system', 
-        content: `You are an expert healthcare call classifier. Determine the primary reason for this call from these categories: authorization, claims_inquiry, benefits, grievance, enrollment, general.` 
+        content: `You are an expert healthcare call classifier. Determine the primary reason for this call from these categories: authorization, claims_inquiry, benefits_explanation, grievance, enrollment, provider_issue, pharmacy, referral, eligibility, appeals, wellness_program, care_management, coverage_verification, billing, member_services, technical_support, appointment_scheduling, other.` 
       },
       { 
         role: 'user', 
@@ -68,15 +67,8 @@ export class LegacyPipelineSystem {
       // Clean up response to get just the category name
       const disposition = response.trim().toLowerCase();
       
-      // Validate against known dispositions
-      const validDispositions: CallDisposition[] = [
-        'authorization', 'claims_inquiry', 'benefits', 'grievance', 'enrollment', 'general'
-      ];
-      
-      if (validDispositions.includes(disposition as CallDisposition)) {
-        return disposition;
-      }
-      return 'general';  // Default to general if invalid
+      // Return the disposition
+      return disposition;
     } catch (error) {
       console.error('Error determining disposition:', error);
       return 'general';  // Default to general on error

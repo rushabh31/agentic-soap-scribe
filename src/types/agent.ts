@@ -31,9 +31,11 @@ export type CallDisposition =
   | 'member_services'
   | 'technical_support'
   | 'appointment_scheduling'
-  | 'other';
+  | 'other'
+  | 'benefits'  // Adding missing value
+  | 'general';  // Adding missing value
 
-export type SentimentType = 'satisfied' | 'neutral' | 'dissatisfied';
+export type SentimentType = 'satisfied' | 'neutral' | 'dissatisfied' | 'positive' | 'negative';
 
 export interface SOAPNote {
   subjective: string;
@@ -57,7 +59,7 @@ export interface EvaluationDimension {
   weaknesses?: string[];
   analysis?: string;
   omissions?: string[];
-  comments?: string;
+  comments: string; // Making comments required to match the expected interface
 }
 
 export interface SystemEvaluation {
@@ -89,6 +91,14 @@ export interface MedicalInfo {
   timeline?: string;
   providers?: string[];
   timelines?: Record<string, string>;
+}
+
+export interface ProcessingProgress {
+  step: number;
+  total: number;
+  currentAgent?: string;
+  agentInput?: string;
+  agentOutput?: string;
 }
 
 export interface AgentState {
