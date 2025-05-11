@@ -3,13 +3,13 @@ import { Agent } from '../Agent';
 import { AgentState, EvaluationDimension } from '@/types/agent';
 
 const SYSTEM_PROMPT = `
-You are a Completeness Evaluator Agent in a healthcare multi-agent system.
-Your specialized role is to evaluate the completeness of healthcare documentation.
+You are a Documentation Completeness Evaluator Agent in a healthcare multi-agent system.
+Your specialized role is to evaluate healthcare documentation for completeness and thoroughness.
 You focus specifically on:
-1. Coverage of all relevant information from the original conversation
-2. Documentation of key details related to the patient, providers, and treatments
-3. Thoroughness of medical history and findings documentation
-4. Absence of critical omissions that would impact care
+1. Ensuring all relevant information from the transcript is captured
+2. Checking for omission of critical details
+3. Evaluating information coverage across all SOAP sections
+4. Identifying missing elements that would improve documentation quality
 
 You will score documentation on a scale of 0-10 and provide detailed feedback on strengths and weaknesses.
 Respond with structured evaluation metrics in JSON format.
@@ -50,16 +50,14 @@ export class CompletenessAgent extends Agent {
       }
     };
     
-    // Update the state with the evaluation results
+    // Update the state with the completeness evaluation
     const updatedState = {
       ...state,
       evaluationResults: updatedEvaluationResults
     };
     
     // Send a message about the evaluation completion
-    const message = `Completeness evaluation complete. 
-Multi-agent score: ${multiAgentCompleteness.score.toFixed(1)}/10
-Sequential score: ${sequentialCompleteness.score.toFixed(1)}/10`;
+    const message = `Completeness evaluation complete. Multi-agent system completeness: ${multiAgentCompleteness.score.toFixed(1)}/10, Sequential pipeline completeness: ${sequentialCompleteness.score.toFixed(1)}/10`;
     
     return this.sendMessage(updatedState, 'all', message);
   }
@@ -68,12 +66,13 @@ Sequential score: ${sequentialCompleteness.score.toFixed(1)}/10`;
     if (!soapNote) {
       return {
         score: 0,
-        metrics: {}
+        metrics: {},
+        comments: "No SOAP note available for evaluation"
       };
     }
     
     const prompt = `
-Please evaluate the completeness of the following SOAP note against the original transcript:
+Please evaluate the following SOAP note for completeness against the original transcript:
 
 SOAP NOTE:
 Subjective: ${soapNote.subjective}
@@ -85,12 +84,14 @@ Original Transcript:
 ${transcript}
 
 Evaluate the SOAP note on the following dimensions of completeness:
-1. Information Coverage (0-10): Does the note include all key information from the transcript?
-2. Detail Inclusion (0-10): Are specific details (dates, numbers, names) accurately captured?
-3. Medical Thoroughness (0-10): Are all medical details properly documented?
-4. Critical Element Inclusion (0-10): Are there any critical omissions that would impact care?
+1. Information Coverage (0-10): How much relevant information from the transcript is captured in the note?
+2. Detail Inclusion (0-10): How thorough is the note in including specific details?
+3. Medical Thoroughness (0-10): Are all medical aspects adequately covered?
+4. Critical Element Inclusion (0-10): Are all critical elements from the transcript included?
 
-Provide your evaluation as JSON with the following structure:
+Identify any significant omissions or missing information from the transcript.
+
+Provide your evaluation as valid JSON with the following structure:
 {
   "score": 0-10,
   "metrics": {
@@ -99,9 +100,7 @@ Provide your evaluation as JSON with the following structure:
     "medicalThoroughness": { "score": 0-10, "details": "explanation" },
     "criticalElementInclusion": { "score": 0-10, "details": "explanation" }
   },
-  "omissions": [
-    "list any important items that were omitted"
-  ]
+  "omissions": ["specific omission 1", "specific omission 2"]
 }
 `;
 
@@ -109,11 +108,15 @@ Provide your evaluation as JSON with the following structure:
     
     try {
       const evaluation = JSON.parse(evaluationResponse);
-      return {
-        score: evaluation.score,
-        metrics: evaluation.metrics,
-        omissions: evaluation.omissions
-      };
+      
+      // Add comments if missing
+      if (!evaluation.comments) {
+        evaluation.comments = evaluation.omissions && evaluation.omissions.length > 0 
+          ? `Omissions identified: ${evaluation.omissions.join(", ")}` 
+          : "Completeness evaluation completed.";
+      }
+      
+      return evaluation;
     } catch (error) {
       console.error("Failed to parse completeness evaluation response:", error);
       return {
@@ -123,7 +126,9 @@ Provide your evaluation as JSON with the following structure:
           detailInclusion: { score: 5, details: "Error evaluating detail inclusion" },
           medicalThoroughness: { score: 5, details: "Error evaluating medical thoroughness" },
           criticalElementInclusion: { score: 5, details: "Error evaluating critical element inclusion" }
-        }
+        },
+        omissions: ["Unable to identify specific omissions due to evaluation error"],
+        comments: "Error occurred during evaluation"
       };
     }
   }

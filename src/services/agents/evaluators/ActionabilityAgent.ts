@@ -78,7 +78,8 @@ export class ActionabilityAgent extends Agent {
     if (!soapNote) {
       return {
         score: 0,
-        metrics: {}
+        metrics: {},
+        comments: "No SOAP note available for evaluation"
       };
     }
     
@@ -100,7 +101,7 @@ Evaluate the SOAP note on the following dimensions of actionability:
 3. Decision Support (0-10): Does the documentation provide sufficient information for clinical decision-making?
 4. Implementation Feasibility (0-10): How feasible are the recommended actions to implement?
 
-Provide your evaluation as JSON with the following structure:
+Provide your evaluation as valid JSON with the following structure:
 {
   "score": 0-10,
   "metrics": {
@@ -116,6 +117,9 @@ Provide your evaluation as JSON with the following structure:
     
     try {
       const evaluation = JSON.parse(evaluationResponse);
+      if (!evaluation.comments) {
+        evaluation.comments = "Actionability evaluation completed.";
+      }
       return evaluation;
     } catch (error) {
       console.error("Failed to parse actionability evaluation response:", error);
@@ -126,7 +130,8 @@ Provide your evaluation as JSON with the following structure:
           followupClarity: { score: 5, details: "Error evaluating follow-up clarity" },
           decisionSupport: { score: 5, details: "Error evaluating decision support" },
           implementationFeasibility: { score: 5, details: "Error evaluating implementation feasibility" }
-        }
+        },
+        comments: "Error occurred during evaluation"
       };
     }
   }

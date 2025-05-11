@@ -1,4 +1,3 @@
-
 import { AgentState, SOAPNote, DocumentationResult, MedicalInfo, TopicResult, CallDisposition, SentimentType, EvaluationResults } from '@/types/agent';
 import { callApi, ApiMessage } from './apiService';
 import { MultiAgentSystem } from './MultiAgentSystem';
@@ -298,17 +297,17 @@ export class HealthcareContactCenterSystem {
     winner: 'multiagent' | 'legacy' | 'tie';
     reasoning: string;
     multiAgent: {
-      completeness: { score: number, comments: string };
-      accuracy: { score: number, comments: string };
-      clinicalRelevance: { score: number, comments: string };
-      actionability: { score: number, comments: string };
+      completeness: EvaluationDimension;
+      accuracy: EvaluationDimension;
+      clinicalRelevance: EvaluationDimension;
+      actionability: EvaluationDimension;
       overallQuality: number;
     };
     sequential: {
-      completeness: { score: number, comments: string };
-      accuracy: { score: number, comments: string };
-      clinicalRelevance: { score: number, comments: string };
-      actionability: { score: number, comments: string };
+      completeness: EvaluationDimension;
+      accuracy: EvaluationDimension;
+      clinicalRelevance: EvaluationDimension;
+      actionability: EvaluationDimension;
       overallQuality: number;
     };
   }> {
@@ -332,21 +331,21 @@ export class HealthcareContactCenterSystem {
           "winner": "multiagent" or "legacy" or "tie",
           "reasoning": "explanation for why one system is better",
           "multiAgent": {
-            "completeness": { "score": 0-10, "comments": "brief comments" },
-            "accuracy": { "score": 0-10, "comments": "brief comments" },
-            "clinicalRelevance": { "score": 0-10, "comments": "brief comments" },
-            "actionability": { "score": 0-10, "comments": "brief comments" },
+            "completeness": { "score": 0-10, "comments": "brief comments", "metrics": {} },
+            "accuracy": { "score": 0-10, "comments": "brief comments", "metrics": {} },
+            "clinicalRelevance": { "score": 0-10, "comments": "brief comments", "metrics": {} },
+            "actionability": { "score": 0-10, "comments": "brief comments", "metrics": {} },
             "overallQuality": 0-10
           },
           "sequential": {
-            "completeness": { "score": 0-10, "comments": "brief comments" },
-            "accuracy": { "score": 0-10, "comments": "brief comments" },
-            "clinicalRelevance": { "score": 0-10, "comments": "brief comments" },
-            "actionability": { "score": 0-10, "comments": "brief comments" },
+            "completeness": { "score": 0-10, "comments": "brief comments", "metrics": {} },
+            "accuracy": { "score": 0-10, "comments": "brief comments", "metrics": {} },
+            "clinicalRelevance": { "score": 0-10, "comments": "brief comments", "metrics": {} },
+            "actionability": { "score": 0-10, "comments": "brief comments", "metrics": {} },
             "overallQuality": 0-10
           }
         }`
-      },
+      } as ApiMessage,
       { 
         role: 'user', 
         content: `Transcript: ${transcript}\n\n
@@ -363,32 +362,70 @@ export class HealthcareContactCenterSystem {
         Plan: ${sequentialSOAP.plan}
         
         Compare and evaluate these SOAP notes:` 
-      }
+      } as ApiMessage
     ];
     
     const result = await callApi(messages);
     
     try {
-      return JSON.parse(result);
+      const parsed = JSON.parse(result);
+      
+      // Add metrics property if missing
+      const ensureMetrics = (dimension: any): EvaluationDimension => {
+        return {
+          ...dimension,
+          metrics: dimension.metrics || {}
+        };
+      };
+      
+      // Ensure all dimensions have the required properties
+      const multiAgent = {
+        completeness: ensureMetrics(parsed.multiAgent.completeness),
+        accuracy: ensureMetrics(parsed.multiAgent.accuracy),
+        clinicalRelevance: ensureMetrics(parsed.multiAgent.clinicalRelevance),
+        actionability: ensureMetrics(parsed.multiAgent.actionability),
+        overallQuality: parsed.multiAgent.overallQuality
+      };
+      
+      const sequential = {
+        completeness: ensureMetrics(parsed.sequential.completeness),
+        accuracy: ensureMetrics(parsed.sequential.accuracy),
+        clinicalRelevance: ensureMetrics(parsed.sequential.clinicalRelevance),
+        actionability: ensureMetrics(parsed.sequential.actionability),
+        overallQuality: parsed.sequential.overallQuality
+      };
+      
+      return {
+        winner: parsed.winner,
+        reasoning: parsed.reasoning,
+        multiAgent,
+        sequential
+      };
     } catch (error) {
       console.error('Error parsing comparison result:', error);
       
-      // Return default structure if parsing fails
+      // Return default structure with both metrics and comments if parsing fails
+      const defaultDimension: EvaluationDimension = {
+        score: 5,
+        comments: 'Evaluation error',
+        metrics: {}
+      };
+      
       return {
         winner: 'tie',
         reasoning: 'Unable to determine a clear winner due to parsing error.',
         multiAgent: {
-          completeness: { score: 5, comments: 'Evaluation error' },
-          accuracy: { score: 5, comments: 'Evaluation error' },
-          clinicalRelevance: { score: 5, comments: 'Evaluation error' },
-          actionability: { score: 5, comments: 'Evaluation error' },
+          completeness: defaultDimension,
+          accuracy: defaultDimension,
+          clinicalRelevance: defaultDimension,
+          actionability: defaultDimension,
           overallQuality: 5
         },
         sequential: {
-          completeness: { score: 5, comments: 'Evaluation error' },
-          accuracy: { score: 5, comments: 'Evaluation error' },
-          clinicalRelevance: { score: 5, comments: 'Evaluation error' },
-          actionability: { score: 5, comments: 'Evaluation error' },
+          completeness: defaultDimension,
+          accuracy: defaultDimension,
+          clinicalRelevance: defaultDimension,
+          actionability: defaultDimension,
           overallQuality: 5
         }
       };

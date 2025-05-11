@@ -119,10 +119,24 @@ Provide your evaluation as JSON with the following structure:
     
     // Return a combined evaluation structure
     return {
-      completeness: { score: 0, metrics: {} }, // Will be filled by CompletenessAgent
-      accuracy: evaluation.accuracy,
-      clinicalRelevance: evaluation.clinicalRelevance,
-      actionability: { score: 0, metrics: {} }, // Will be filled by ActionabilityAgent
+      completeness: { 
+        score: 0, 
+        metrics: {},
+        comments: "Will be filled by CompletenessAgent"
+      }, // Will be filled by CompletenessAgent
+      accuracy: { 
+        ...evaluation.accuracy,
+        comments: "Clinical accuracy evaluation completed."
+      },
+      clinicalRelevance: { 
+        ...evaluation.clinicalRelevance,
+        comments: "Clinical relevance evaluation completed."
+      },
+      actionability: { 
+        score: 0, 
+        metrics: {},
+        comments: "Will be filled by ActionabilityAgent"
+      }, // Will be filled by ActionabilityAgent
       overallQuality: evaluation.overallClinicalQuality
     };
   }

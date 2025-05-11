@@ -59,7 +59,7 @@ export interface EvaluationDimension {
   weaknesses?: string[];
   analysis?: string;
   omissions?: string[];
-  comments: string; // Making comments required to match the expected interface
+  comments: string; // Required field
 }
 
 export interface SystemEvaluation {

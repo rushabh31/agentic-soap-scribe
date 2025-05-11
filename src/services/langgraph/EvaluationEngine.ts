@@ -1,4 +1,3 @@
-
 import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState, EvaluationResults, MedicalInfo } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
@@ -113,6 +112,49 @@ Provide a comprehensive evaluation in JSON format with the following structure:
     try {
       const parsedResult = JSON.parse(result.output);
       
+      // Create default evaluation dimension with required properties
+      const defaultDimension: EvaluationDimension = {
+        score: 0,
+        metrics: {},
+        comments: "Not evaluated"
+      };
+
+      // Ensure completeness has all required properties
+      const completeness = parsedResult.dimensions?.completeness 
+        ? { 
+            ...parsedResult.dimensions.completeness, 
+            metrics: parsedResult.dimensions.completeness.metrics || {},
+            comments: parsedResult.dimensions.completeness.comments || "Completeness evaluation completed."
+          }
+        : defaultDimension;
+
+      // Ensure accuracy has all required properties  
+      const accuracy = parsedResult.dimensions?.accuracy 
+        ? { 
+            ...parsedResult.dimensions.accuracy, 
+            metrics: parsedResult.dimensions.accuracy.metrics || {},
+            comments: parsedResult.dimensions.accuracy.comments || "Accuracy evaluation completed."
+          }
+        : defaultDimension;
+
+      // Ensure clinicalRelevance has all required properties
+      const clinicalRelevance = parsedResult.dimensions?.clinicalRelevance 
+        ? { 
+            ...parsedResult.dimensions.clinicalRelevance, 
+            metrics: parsedResult.dimensions.clinicalRelevance.metrics || {},
+            comments: parsedResult.dimensions.clinicalRelevance.comments || "Clinical relevance evaluation completed."
+          }
+        : defaultDimension;
+
+      // Ensure actionability has all required properties
+      const actionability = parsedResult.dimensions?.actionability 
+        ? { 
+            ...parsedResult.dimensions.actionability, 
+            metrics: parsedResult.dimensions.actionability.metrics || {},
+            comments: parsedResult.dimensions.actionability.comments || "Actionability evaluation completed."
+          }
+        : defaultDimension;
+      
       // Structure the evaluation results
       evaluationResults = {
         overallScore: parsedResult.overallScore || 0,
@@ -120,10 +162,10 @@ Provide a comprehensive evaluation in JSON format with the following structure:
         recommendations: parsedResult.recommendations || [],
         multiAgent: {
           soapNote: state.soapNote,
-          completeness: parsedResult.dimensions?.completeness,
-          accuracy: parsedResult.dimensions?.accuracy,
-          clinicalRelevance: parsedResult.dimensions?.clinicalRelevance,
-          actionability: parsedResult.dimensions?.actionability,
+          completeness,
+          accuracy,
+          clinicalRelevance,
+          actionability,
           overallQuality: parsedResult.overallScore
         },
         sequential: {
@@ -134,15 +176,30 @@ Provide a comprehensive evaluation in JSON format with the following structure:
     } catch (error) {
       console.error('Failed to parse Evaluation Engine response as JSON:', error);
       
+      // Create default evaluation results with all required properties
+      const defaultDimension: EvaluationDimension = {
+        score: 0,
+        metrics: {},
+        comments: "Error during evaluation"
+      };
+      
       // Create default evaluation results
       evaluationResults = {
         overallScore: 0,
         summary: "Error parsing evaluation results",
         multiAgent: {
           soapNote: state.soapNote,
+          completeness: defaultDimension,
+          accuracy: defaultDimension,
+          clinicalRelevance: defaultDimension,
+          actionability: defaultDimension,
           overallQuality: 0
         },
         sequential: {
+          completeness: defaultDimension,
+          accuracy: defaultDimension,
+          clinicalRelevance: defaultDimension,
+          actionability: defaultDimension,
           overallQuality: 0
         }
       };
