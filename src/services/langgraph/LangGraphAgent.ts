@@ -139,17 +139,7 @@ export class LangGraphAgent {
         return this;
       },
       
-      // Removing withMaxRetries as it doesn't exist in the Runnable type
-      
-      streamFromIterable: function(iterable: AsyncIterable<LanguageModelOutput>): Promise<any> {
-        return Promise.resolve({
-          [Symbol.asyncIterator]: async function* () {
-            for await (const item of iterable) {
-              yield item;
-            }
-          }
-        });
-      },
+      // Remove the non-existent streamFromIterable method
       
       // Additional required methods
       withBind: function(): any {
