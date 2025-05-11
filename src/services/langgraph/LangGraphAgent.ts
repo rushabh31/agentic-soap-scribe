@@ -1,18 +1,13 @@
-
 import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from '../apiService';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { Tool } from '@langchain/core/tools';
-import { HumanMessage, BaseMessage } from '@langchain/core/messages';
+import { HumanMessage, BaseMessage, AIMessage } from '@langchain/core/messages';
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { Runnable } from "@langchain/core/runnables";
 import { LanguageModelOutput } from "@langchain/core/language_models/base";
-
-// Define an interface for IterableReadableStream
-interface IterableReadableStream<T> {
-  [Symbol.asyncIterator](): AsyncIterableIterator<T>;
-}
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
 // Custom tool for transcript analysis
 class TranscriptAnalysisTool extends Tool {
@@ -46,6 +41,56 @@ class TranscriptAnalysisTool extends Tool {
   }
 }
 
+// Create a custom LLM class that extends BaseChatModel
+class CustomChatModel extends BaseChatModel {
+  private systemPrompt: string;
+  private agentType: string;
+
+  constructor(systemPrompt: string, agentType: string) {
+    super({});
+    this.systemPrompt = systemPrompt;
+    this.agentType = agentType;
+  }
+
+  async _generate(messages: BaseMessage[]): Promise<any> {
+    try {
+      // Get the last message content
+      const lastMessage = messages[messages.length - 1];
+      const inputContent = typeof lastMessage.content === 'string' 
+        ? lastMessage.content 
+        : JSON.stringify(lastMessage.content);
+      
+      const apiMessages: ApiMessage[] = [
+        { role: 'system', content: this.systemPrompt },
+        { role: 'user', content: inputContent }
+      ];
+      
+      const response = await callApi(apiMessages);
+      
+      return {
+        generations: [
+          {
+            text: response,
+            message: new AIMessage(response)
+          }
+        ]
+      };
+    } catch (error) {
+      console.error(`Error in ${this.agentType} model:`, error);
+      throw error;
+    }
+  }
+
+  _llmType(): string {
+    return "custom_chat_model";
+  }
+
+  // Required abstract method implementation
+  async _combineLLMOutput() {
+    return [];
+  }
+}
+
 export class LangGraphAgent {
   protected systemPrompt: string;
   protected agentType: string;
@@ -61,99 +106,8 @@ export class LangGraphAgent {
       new TranscriptAnalysisTool(transcript)
     ];
     
-    // Create a custom llm object that conforms to the expected interface
-    const llm: Runnable<BaseLanguageModelInput, LanguageModelOutput, RunnableConfig> = {
-      invoke: async (input: BaseLanguageModelInput): Promise<LanguageModelOutput> => {
-        try {
-          let inputContent: string;
-          if (typeof input === 'string') {
-            inputContent = input;
-          } else if (input instanceof HumanMessage || input instanceof BaseMessage) {
-            inputContent = typeof input.content === 'string' ? input.content : JSON.stringify(input.content);
-          } else if (typeof input === 'object' && input !== null && 'content' in input) {
-            inputContent = typeof input.content === 'string' ? input.content : JSON.stringify(input.content);
-          } else {
-            inputContent = JSON.stringify(input);
-          }
-          
-          const messages: ApiMessage[] = [
-            { role: 'system', content: this.systemPrompt },
-            { role: 'user', content: inputContent }
-          ];
-          
-          const response = await callApi(messages);
-          return new HumanMessage(response);
-        } catch (error) {
-          console.error(`Error in ${this.agentType} agent:`, error);
-          throw error;
-        }
-      },
-      
-      // Required interface methods with proper implementations
-      lc_runnable: true,
-      lc_namespace: ["langchain", "llms"],
-      lc_serializable: true,
-      
-      batch: async function(inputs: BaseLanguageModelInput[], options?: RunnableConfig): Promise<LanguageModelOutput[]> {
-        return Promise.all(inputs.map(input => this.invoke(input, options)));
-      },
-      
-      // Use a more permissive type for stream to bypass strict type checking
-      stream: async function(input: BaseLanguageModelInput, options?: RunnableConfig): Promise<any> {
-        const result = await this.invoke(input, options);
-        // Create and return an IterableReadableStream
-        return {
-          [Symbol.asyncIterator]: async function* () {
-            yield result;
-          }
-        };
-      },
-      
-      // Implement the required methods
-      bind: function(args: Record<string, unknown>): any {
-        return this;
-      },
-      
-      getName: function(): string {
-        return "CustomLLM";
-      },
-      
-      map: function(): any {
-        return this;
-      },
-      
-      pipe: function(): any {
-        return this;
-      },
-      
-      withConfig: function(): any {
-        return this;
-      },
-      
-      withListeners: function(): any {
-        return this;
-      },
-      
-      // Use a more permissive return type for withRetry
-      withRetry: function(): any {
-        return this;
-      },
-      
-      // Remove the non-existent streamFromIterable method
-      
-      // Additional required methods
-      withBind: function(): any {
-        return this;
-      },
-      
-      withMaxConcurrency: function(): any {
-        return this;
-      },
-      
-      withOptions: function(): any {
-        return this;
-      }
-    };
+    // Create a proper chat model instance
+    const llm = new CustomChatModel(this.systemPrompt, this.agentType);
     
     // Create the ReAct agent
     return createReactAgent({
