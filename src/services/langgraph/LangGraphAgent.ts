@@ -98,51 +98,68 @@ export class LangGraphAgent {
         return Promise.all(inputs.map(input => this.invoke(input, options)));
       },
       
-      stream: async function*(input: BaseLanguageModelInput, options?: RunnableConfig): AsyncGenerator<LanguageModelOutput> {
+      stream: async function(input: BaseLanguageModelInput, options?: RunnableConfig): Promise<IterableReadableStream<LanguageModelOutput>> {
         const result = await this.invoke(input, options);
-        yield result;
-      },
-      
-      // Properly implement the streaming method to return a Promise of IterableReadableStream
-      streamFromIterable: function(iterable: AsyncIterable<LanguageModelOutput>): Promise<IterableReadableStream<LanguageModelOutput>> {
-        return Promise.resolve({
-          [Symbol.asyncIterator]: async function*() {
-            yield* iterable;
+        // Create and return an IterableReadableStream
+        return {
+          [Symbol.asyncIterator]: async function* () {
+            yield result;
           }
-        });
+        };
       },
       
       // Implement the required methods
       bind: function(args: Record<string, unknown>): Runnable {
         return this;
       },
+      
       getName: function(): string {
         return "CustomLLM";
       },
+      
       map: function(): Runnable {
         return this;
       },
+      
       pipe: function(): Runnable {
         return this;
       },
+      
       withConfig: function(): Runnable {
         return this;
       },
+      
       withListeners: function(): Runnable {
         return this;
       },
+      
       withRetry: function(): Runnable {
         return this;
       },
-      withBind: function(): Runnable {
-        return this;
-      },
-      withMaxConcurrency: function(): Runnable {
-        return this;
-      },
+      
       withMaxRetries: function(): Runnable {
         return this;
       },
+      
+      streamFromIterable: function(iterable: AsyncIterable<LanguageModelOutput>): Promise<IterableReadableStream<LanguageModelOutput>> {
+        return Promise.resolve({
+          [Symbol.asyncIterator]: async function* () {
+            for await (const item of iterable) {
+              yield item;
+            }
+          }
+        });
+      },
+      
+      // Additional required methods
+      withBind: function(): Runnable {
+        return this;
+      },
+      
+      withMaxConcurrency: function(): Runnable {
+        return this;
+      },
+      
       withOptions: function(): Runnable {
         return this;
       }

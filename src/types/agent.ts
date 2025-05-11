@@ -16,12 +16,24 @@ export type AgentType =
 export type CallDisposition =
   | 'authorization'
   | 'claims_inquiry'
-  | 'benefits'
+  | 'benefits_explanation'
   | 'grievance'
   | 'enrollment'
-  | 'general';
+  | 'provider_issue'
+  | 'pharmacy'
+  | 'referral'
+  | 'eligibility'
+  | 'appeals'
+  | 'wellness_program'
+  | 'care_management'
+  | 'coverage_verification'
+  | 'billing'
+  | 'member_services'
+  | 'technical_support'
+  | 'appointment_scheduling'
+  | 'other';
 
-export type SentimentType = 'positive' | 'neutral' | 'negative';
+export type SentimentType = 'satisfied' | 'neutral' | 'dissatisfied';
 
 export interface SOAPNote {
   subjective: string;
@@ -45,7 +57,7 @@ export interface EvaluationDimension {
   weaknesses?: string[];
   analysis?: string;
   omissions?: string[];
-  comments?: string; // Added for compatibility with the EvaluationResults component
+  comments?: string;
 }
 
 export interface SystemEvaluation {
@@ -63,17 +75,20 @@ export interface EvaluationResults {
   recommendations?: string[];
   multiAgent: SystemEvaluation;
   sequential: SystemEvaluation;
+  winner?: 'multiagent' | 'legacy' | 'tie';
+  reasoning?: string;
 }
 
 // Define a proper MedicalInfo interface
 export interface MedicalInfo {
-  conditions?: any[];
-  procedures?: any[];
-  symptoms?: any[];
-  medications?: any[];
+  conditions?: string[];
+  procedures?: string[];
+  symptoms?: string[];
+  medications?: string[];
   medicalHistory?: string;
   timeline?: string;
-  providers?: any[];
+  providers?: string[];
+  timelines?: Record<string, string>;
 }
 
 export interface AgentState {
@@ -96,4 +111,26 @@ export interface AgentState {
   soapNote?: SOAPNote;
   evaluationResults?: EvaluationResults;
   messages: AgentMessage[];
+}
+
+// Healthcare Contact Center specific types
+export interface UrgencyResult {
+  level: number;
+  rationale: string;
+}
+
+export interface TopicResult {
+  topics: string[];
+  confidences: number[];
+}
+
+export interface DocumentationResult {
+  transcript: string;
+  disposition: string;
+  summary: SOAPNote;
+  sentiment: {
+    sentiment: SentimentType;
+    score: number;
+  };
+  topics: TopicResult;
 }
