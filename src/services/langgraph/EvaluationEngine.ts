@@ -1,5 +1,6 @@
+
 import { LangGraphAgent } from './LangGraphAgent';
-import { AgentState, EvaluationResults, MedicalInfo } from '@/types/agent';
+import { AgentState, EvaluationResults, MedicalInfo, EvaluationDimension } from '@/types/agent';
 import { v4 as uuidv4 } from 'uuid';
 
 const SYSTEM_PROMPT = `

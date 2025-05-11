@@ -1,3 +1,4 @@
+
 import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from '../apiService';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
@@ -138,9 +139,7 @@ export class LangGraphAgent {
         return this;
       },
       
-      withMaxRetries: function(): any {
-        return this;
-      },
+      // Removing withMaxRetries as it doesn't exist in the Runnable type
       
       streamFromIterable: function(iterable: AsyncIterable<LanguageModelOutput>): Promise<any> {
         return Promise.resolve({

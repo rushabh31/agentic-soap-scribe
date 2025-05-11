@@ -1,4 +1,5 @@
-import { AgentState, SOAPNote, DocumentationResult, MedicalInfo, TopicResult, CallDisposition, SentimentType, EvaluationResults } from '@/types/agent';
+
+import { AgentState, SOAPNote, DocumentationResult, MedicalInfo, TopicResult, CallDisposition, SentimentType, EvaluationResults, EvaluationDimension } from '@/types/agent';
 import { callApi, ApiMessage } from './apiService';
 import { MultiAgentSystem } from './MultiAgentSystem';
 import { v4 as uuidv4 } from 'uuid';
