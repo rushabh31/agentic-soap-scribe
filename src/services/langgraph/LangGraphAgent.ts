@@ -1,3 +1,4 @@
+
 import { AgentState } from '@/types/agent';
 import { callApi, ApiMessage } from '../apiService';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
@@ -88,6 +89,11 @@ class CustomChatModel extends BaseChatModel {
   // Required abstract method implementation
   async _combineLLMOutput() {
     return [];
+  }
+
+  // Add bindTools method required by the ReAct agent
+  bindTools(tools: Tool[]): BaseChatModel {
+    return this;
   }
 }
 
