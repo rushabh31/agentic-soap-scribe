@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Settings } from 'lucide-react';
 
 const TranscriptsPage = () => {
-  const { isProcessing, hasApiConfig } = useAgent();
+  const { isProcessing, hasApiKey } = useAgent();
   
   return (
     <PageLayout>
@@ -26,7 +26,7 @@ const TranscriptsPage = () => {
         <Tabs defaultValue="transcript" className="mb-6">
           <TabsList>
             <TabsTrigger value="transcript">Submit Transcript</TabsTrigger>
-            <TabsTrigger value="settings">API Settings</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           
           <TabsContent value="transcript">
@@ -103,7 +103,7 @@ AGENT: Thank you for calling HealthFirst. I hope your knee feels better soon. Ha
                   API Configuration
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Configure API settings for processing transcripts.
+                  Configure your Groq API key for processing transcripts.
                 </p>
                 <ApiKeyForm />
               </div>

@@ -28,25 +28,24 @@ export class ActionabilityAgent extends Agent {
     // Evaluate the actionability of the multi-agent SOAP note
     const multiAgentActionability = await this.evaluateActionability(
       state.soapNote, 
-      state.transcript || ""
+      state.transcript
     );
     
     // Evaluate the actionability of the sequential SOAP note
     const sequentialActionability = await this.evaluateActionability(
       state.evaluationResults.sequential.soapNote || state.soapNote,
-      state.transcript || ""
+      state.transcript
     );
     
     // Update the evaluation results
     const updatedEvaluationResults = {
-      ...state.evaluationResults,
       multiAgent: {
         ...state.evaluationResults.multiAgent,
         actionability: multiAgentActionability,
         overallQuality: this.calculateOverallQuality(
-          state.evaluationResults.multiAgent.completeness?.score || 0,
-          state.evaluationResults.multiAgent.accuracy?.score || 0,
-          state.evaluationResults.multiAgent.clinicalRelevance?.score || 0,
+          state.evaluationResults.multiAgent.completeness.score,
+          state.evaluationResults.multiAgent.accuracy.score,
+          state.evaluationResults.multiAgent.clinicalRelevance.score,
           multiAgentActionability.score
         )
       },
@@ -54,9 +53,9 @@ export class ActionabilityAgent extends Agent {
         ...state.evaluationResults.sequential,
         actionability: sequentialActionability,
         overallQuality: this.calculateOverallQuality(
-          state.evaluationResults.sequential.completeness?.score || 0,
-          state.evaluationResults.sequential.accuracy?.score || 0,
-          state.evaluationResults.sequential.clinicalRelevance?.score || 0,
+          state.evaluationResults.sequential.completeness.score,
+          state.evaluationResults.sequential.accuracy.score,
+          state.evaluationResults.sequential.clinicalRelevance.score,
           sequentialActionability.score
         )
       }
@@ -69,7 +68,7 @@ export class ActionabilityAgent extends Agent {
     };
     
     // Send a message about the evaluation completion
-    const message = `Evaluation complete. Multi-agent system overall quality: ${updatedEvaluationResults.multiAgent.overallQuality?.toFixed(1)}/10, Sequential pipeline overall quality: ${updatedEvaluationResults.sequential.overallQuality?.toFixed(1)}/10`;
+    const message = `Evaluation complete. Multi-agent system overall quality: ${updatedEvaluationResults.multiAgent.overallQuality.toFixed(1)}/10, Sequential pipeline overall quality: ${updatedEvaluationResults.sequential.overallQuality.toFixed(1)}/10`;
     
     return this.sendMessage(updatedState, 'all', message);
   }
@@ -78,8 +77,7 @@ export class ActionabilityAgent extends Agent {
     if (!soapNote) {
       return {
         score: 0,
-        metrics: {},
-        comments: "No SOAP note available for evaluation"
+        metrics: {}
       };
     }
     
@@ -101,7 +99,7 @@ Evaluate the SOAP note on the following dimensions of actionability:
 3. Decision Support (0-10): Does the documentation provide sufficient information for clinical decision-making?
 4. Implementation Feasibility (0-10): How feasible are the recommended actions to implement?
 
-Provide your evaluation as valid JSON with the following structure:
+Provide your evaluation as JSON with the following structure:
 {
   "score": 0-10,
   "metrics": {
@@ -117,9 +115,6 @@ Provide your evaluation as valid JSON with the following structure:
     
     try {
       const evaluation = JSON.parse(evaluationResponse);
-      if (!evaluation.comments) {
-        evaluation.comments = "Actionability evaluation completed.";
-      }
       return evaluation;
     } catch (error) {
       console.error("Failed to parse actionability evaluation response:", error);
@@ -130,8 +125,7 @@ Provide your evaluation as valid JSON with the following structure:
           followupClarity: { score: 5, details: "Error evaluating follow-up clarity" },
           decisionSupport: { score: 5, details: "Error evaluating decision support" },
           implementationFeasibility: { score: 5, details: "Error evaluating implementation feasibility" }
-        },
-        comments: "Error occurred during evaluation"
+        }
       };
     }
   }

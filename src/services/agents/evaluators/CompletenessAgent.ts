@@ -3,13 +3,13 @@ import { Agent } from '../Agent';
 import { AgentState, EvaluationDimension } from '@/types/agent';
 
 const SYSTEM_PROMPT = `
-You are a Documentation Completeness Evaluator Agent in a healthcare multi-agent system.
-Your specialized role is to evaluate healthcare documentation for completeness and thoroughness.
+You are a Completeness Evaluator Agent in a healthcare multi-agent system.
+Your specialized role is to assess how complete and comprehensive healthcare documentation is.
 You focus specifically on:
-1. Ensuring all relevant information from the transcript is captured
-2. Checking for omission of critical details
-3. Evaluating information coverage across all SOAP sections
-4. Identifying missing elements that would improve documentation quality
+1. Whether all relevant information from the transcript is captured
+2. Whether all required sections of the SOAP note are properly filled
+3. If there are any missing critical pieces of information
+4. The overall comprehensiveness of the documentation
 
 You will score documentation on a scale of 0-10 and provide detailed feedback on strengths and weaknesses.
 Respond with structured evaluation metrics in JSON format.
@@ -25,21 +25,20 @@ export class CompletenessAgent extends Agent {
       return state;
     }
     
-    // Evaluate the completeness of the multi-agent SOAP note
+    // Evaluate completeness for multi-agent SOAP note
     const multiAgentCompleteness = await this.evaluateCompleteness(
-      state.soapNote, 
-      state.transcript || ""
+      state.soapNote,
+      state.transcript
     );
     
-    // Evaluate the completeness of the sequential SOAP note
+    // Evaluate completeness for sequential SOAP note
     const sequentialCompleteness = await this.evaluateCompleteness(
       state.evaluationResults.sequential.soapNote || state.soapNote,
-      state.transcript || ""
+      state.transcript
     );
     
     // Update the evaluation results
     const updatedEvaluationResults = {
-      ...state.evaluationResults,
       multiAgent: {
         ...state.evaluationResults.multiAgent,
         completeness: multiAgentCompleteness
@@ -50,14 +49,14 @@ export class CompletenessAgent extends Agent {
       }
     };
     
-    // Update the state with the completeness evaluation
+    // Update the state with the evaluation results
     const updatedState = {
       ...state,
       evaluationResults: updatedEvaluationResults
     };
     
-    // Send a message about the evaluation completion
-    const message = `Completeness evaluation complete. Multi-agent system completeness: ${multiAgentCompleteness.score.toFixed(1)}/10, Sequential pipeline completeness: ${sequentialCompleteness.score.toFixed(1)}/10`;
+    // Send a message about the completeness evaluation
+    const message = `Completeness evaluation complete. Multi-agent score: ${multiAgentCompleteness.score.toFixed(1)}/10, Sequential score: ${sequentialCompleteness.score.toFixed(1)}/10`;
     
     return this.sendMessage(updatedState, 'all', message);
   }
@@ -66,13 +65,12 @@ export class CompletenessAgent extends Agent {
     if (!soapNote) {
       return {
         score: 0,
-        metrics: {},
-        comments: "No SOAP note available for evaluation"
+        metrics: {}
       };
     }
-    
+
     const prompt = `
-Please evaluate the following SOAP note for completeness against the original transcript:
+Please evaluate the following SOAP note for completeness:
 
 SOAP NOTE:
 Subjective: ${soapNote.subjective}
@@ -84,23 +82,20 @@ Original Transcript:
 ${transcript}
 
 Evaluate the SOAP note on the following dimensions of completeness:
-1. Information Coverage (0-10): How much relevant information from the transcript is captured in the note?
-2. Detail Inclusion (0-10): How thorough is the note in including specific details?
-3. Medical Thoroughness (0-10): Are all medical aspects adequately covered?
-4. Critical Element Inclusion (0-10): Are all critical elements from the transcript included?
+1. Information Capture Rate (0-10): What percentage of important information from the transcript is captured?
+2. Section Completeness (0-10): How completely are all SOAP sections filled out?
+3. Critical Information Inclusion (0-10): Are all critical pieces of information included?
+4. Detail Level (0-10): Is the level of detail appropriate and sufficient?
 
-Identify any significant omissions or missing information from the transcript.
-
-Provide your evaluation as valid JSON with the following structure:
+Provide your evaluation as JSON with the following structure:
 {
   "score": 0-10,
   "metrics": {
-    "informationCoverage": { "score": 0-10, "details": "explanation" },
-    "detailInclusion": { "score": 0-10, "details": "explanation" },
-    "medicalThoroughness": { "score": 0-10, "details": "explanation" },
-    "criticalElementInclusion": { "score": 0-10, "details": "explanation" }
-  },
-  "omissions": ["specific omission 1", "specific omission 2"]
+    "informationCaptureRate": { "score": 0-10, "details": "explanation" },
+    "sectionCompleteness": { "score": 0-10, "details": "explanation" },
+    "criticalInformationInclusion": { "score": 0-10, "details": "explanation" },
+    "detailLevel": { "score": 0-10, "details": "explanation" }
+  }
 }
 `;
 
@@ -108,27 +103,17 @@ Provide your evaluation as valid JSON with the following structure:
     
     try {
       const evaluation = JSON.parse(evaluationResponse);
-      
-      // Add comments if missing
-      if (!evaluation.comments) {
-        evaluation.comments = evaluation.omissions && evaluation.omissions.length > 0 
-          ? `Omissions identified: ${evaluation.omissions.join(", ")}` 
-          : "Completeness evaluation completed.";
-      }
-      
       return evaluation;
     } catch (error) {
       console.error("Failed to parse completeness evaluation response:", error);
       return {
         score: 5,
         metrics: {
-          informationCoverage: { score: 5, details: "Error evaluating information coverage" },
-          detailInclusion: { score: 5, details: "Error evaluating detail inclusion" },
-          medicalThoroughness: { score: 5, details: "Error evaluating medical thoroughness" },
-          criticalElementInclusion: { score: 5, details: "Error evaluating critical element inclusion" }
-        },
-        omissions: ["Unable to identify specific omissions due to evaluation error"],
-        comments: "Error occurred during evaluation"
+          informationCaptureRate: { score: 5, details: "Error evaluating information capture rate" },
+          sectionCompleteness: { score: 5, details: "Error evaluating section completeness" },
+          criticalInformationInclusion: { score: 5, details: "Error evaluating critical information inclusion" },
+          detailLevel: { score: 5, details: "Error evaluating detail level" }
+        }
       };
     }
   }

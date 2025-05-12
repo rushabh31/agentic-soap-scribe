@@ -1,199 +1,77 @@
 
 import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSettings } from '@/contexts/SettingsContext';
-import ModelSelector from './ModelSelector';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, Key } from 'lucide-react';
 
 const ApiKeyForm: React.FC = () => {
-  const { 
-    apiProvider, 
-    setApiProvider,
-    ollamaUrl, 
-    setOllamaUrl, 
-    ollamaModel,
-    setOllamaModel,
-    groqApiKey,
-    setGroqApiKey,
-    groqModel,
-    setGroqModel,
-    isOllamaConnected,
-    isOllamaModelConnected,
-    isGroqConnected,
-    isGroqModelConnected,
-    checkOllamaConnection,
-    checkGroqConnection
-  } = useSettings();
+  const { apiKey, setApiKeyValue, hasApiKey } = useSettings();
+  const [inputKey, setInputKey] = useState(apiKey);
+  const [isEditing, setIsEditing] = useState(!hasApiKey);
 
-  const [selectedApiProvider, setSelectedApiProvider] = useState<'ollama' | 'groq'>(apiProvider);
-
-  const handleProviderChange = (value: 'ollama' | 'groq') => {
-    setSelectedApiProvider(value);
-    setApiProvider(value); 
+  const handleSave = () => {
+    setApiKeyValue(inputKey);
+    setIsEditing(false);
   };
 
-  const handleTestOllamaConnection = async () => {
-    await checkOllamaConnection(true);
-  };
-
-  const handleTestGroqConnection = async () => {
-    await checkGroqConnection(true);
-  };
+  if (!isEditing && hasApiKey) {
+    return (
+      <Card className="max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            API Key Configured
+          </CardTitle>
+          <CardDescription>
+            Your Groq API key is saved securely in your browser's local storage.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="flex justify-between">
+          <Button variant="outline" onClick={() => setIsEditing(true)}>
+            Change API Key
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
+    <Card className="max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>API Configuration</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Key className="h-5 w-5" />
+          Configure Groq API Key
+        </CardTitle>
         <CardDescription>
-          Configure your AI provider settings to process healthcare transcripts.
+          This application requires a Groq API key to function. Your key is stored securely in your browser's local storage and is never sent to our server.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <RadioGroup 
-          defaultValue={apiProvider} 
-          value={selectedApiProvider}
-          onValueChange={handleProviderChange as (value: string) => void}
-          className="flex flex-col space-y-1 mb-4"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="ollama" id="ollama" />
-            <Label htmlFor="ollama">Ollama (Local)</Label>
-            <Badge variant="outline" className="ml-2">Local deployment</Badge>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Input
+              id="apiKey"
+              placeholder="Enter your Groq API key"
+              value={inputKey}
+              onChange={(e) => setInputKey(e.target.value)}
+              type="password"
+            />
           </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="groq" id="groq" />
-            <Label htmlFor="groq">Groq API</Label>
-            <Badge variant="outline" className="ml-2">Cloud API</Badge>
+          <div className="text-sm text-muted-foreground">
+            Don't have a Groq API key? Get one at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-medical-primary hover:underline">console.groq.com</a>
           </div>
-        </RadioGroup>
-
-        <Tabs defaultValue={apiProvider} value={selectedApiProvider}>
-          <TabsContent value="ollama" className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="ollama-url">Ollama URL</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="ollama-url"
-                  placeholder="http://localhost:11434"
-                  value={ollamaUrl}
-                  onChange={(e) => setOllamaUrl(e.target.value)}
-                />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="shrink-0"
-                  onClick={handleTestOllamaConnection}
-                >
-                  Test
-                </Button>
-              </div>
-              <div className="text-xs flex items-center mt-1">
-                {isOllamaConnected === true && (
-                  <span className="text-green-600 flex items-center">
-                    <CheckCircle className="h-3 w-3 mr-1" /> Connected to Ollama
-                  </span>
-                )}
-                {isOllamaConnected === false && (
-                  <span className="text-red-600 flex items-center">
-                    <XCircle className="h-3 w-3 mr-1" /> Cannot connect to Ollama
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="ollama-model">Ollama Model</Label>
-              <ModelSelector 
-                provider="ollama" 
-                value={ollamaModel} 
-                onChange={setOllamaModel}
-                isConnected={isOllamaConnected === true}
-              />
-              <div className="text-xs flex items-center mt-1">
-                {isOllamaModelConnected === true && (
-                  <span className="text-green-600 flex items-center">
-                    <CheckCircle className="h-3 w-3 mr-1" /> Model available
-                  </span>
-                )}
-                {isOllamaModelConnected === false && isOllamaConnected === true && (
-                  <span className="text-red-600 flex items-center">
-                    <XCircle className="h-3 w-3 mr-1" /> Model not found
-                  </span>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="groq" className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="groq-api-key">Groq API Key</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="groq-api-key"
-                  placeholder="gsk_..."
-                  type="password"
-                  value={groqApiKey}
-                  onChange={(e) => setGroqApiKey(e.target.value)}
-                />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="shrink-0"
-                  onClick={handleTestGroqConnection}
-                >
-                  Test
-                </Button>
-              </div>
-              <div className="text-xs flex items-center mt-1">
-                {isGroqConnected === true && (
-                  <span className="text-green-600 flex items-center">
-                    <CheckCircle className="h-3 w-3 mr-1" /> API key valid
-                  </span>
-                )}
-                {isGroqConnected === false && groqApiKey && (
-                  <span className="text-red-600 flex items-center">
-                    <XCircle className="h-3 w-3 mr-1" /> API key invalid
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="groq-model">Groq Model</Label>
-              <ModelSelector 
-                provider="groq" 
-                value={groqModel} 
-                onChange={setGroqModel}
-                isConnected={Boolean(groqApiKey)}
-              />
-              <div className="text-xs flex items-center mt-1">
-                {isGroqModelConnected === true && (
-                  <span className="text-green-600 flex items-center">
-                    <CheckCircle className="h-3 w-3 mr-1" /> Model available
-                  </span>
-                )}
-                {isGroqModelConnected === false && groqApiKey && (
-                  <span className="text-red-600 flex items-center">
-                    <XCircle className="h-3 w-3 mr-1" /> Model not available
-                  </span>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+        </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <p className="text-sm text-gray-500">
-          {selectedApiProvider === 'ollama' 
-            ? 'Make sure Ollama is running locally with the selected model.' 
-            : 'Your API key is stored in browser storage and is not sent to any server.'}
-        </p>
+      <CardFooter>
+        <Button 
+          onClick={handleSave}
+          disabled={!inputKey.trim()}
+          className="w-full"
+        >
+          Save API Key
+        </Button>
       </CardFooter>
     </Card>
   );

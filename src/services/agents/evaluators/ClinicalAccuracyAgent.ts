@@ -28,19 +28,16 @@ export class ClinicalAccuracyAgent extends Agent {
     }
     
     // Create a sequential SOAP note for comparison (simplified version)
-    const sequentialSoapNote = await this.generateSequentialSOAP(state.transcript || "");
+    const sequentialSoapNote = await this.generateSequentialSOAP(state.transcript);
     
     // Evaluate both SOAP notes
-    const multiAgentEvaluation = await this.evaluateSoapNote(state.soapNote, state.transcript || "");
-    const sequentialEvaluation = await this.evaluateSoapNote(sequentialSoapNote, state.transcript || "");
+    const multiAgentEvaluation = await this.evaluateSoapNote(state.soapNote, state.transcript);
+    const sequentialEvaluation = await this.evaluateSoapNote(sequentialSoapNote, state.transcript);
     
     // Update the state with evaluation results
     const updatedState = {
       ...state,
       evaluationResults: {
-        overallScore: multiAgentEvaluation.overallQuality || 0,
-        summary: "Clinical accuracy evaluation complete",
-        recommendations: [],
         multiAgent: {
           ...multiAgentEvaluation,
           soapNote: state.soapNote
@@ -119,24 +116,10 @@ Provide your evaluation as JSON with the following structure:
     
     // Return a combined evaluation structure
     return {
-      completeness: { 
-        score: 0, 
-        metrics: {},
-        comments: "Will be filled by CompletenessAgent"
-      }, // Will be filled by CompletenessAgent
-      accuracy: { 
-        ...evaluation.accuracy,
-        comments: "Clinical accuracy evaluation completed."
-      },
-      clinicalRelevance: { 
-        ...evaluation.clinicalRelevance,
-        comments: "Clinical relevance evaluation completed."
-      },
-      actionability: { 
-        score: 0, 
-        metrics: {},
-        comments: "Will be filled by ActionabilityAgent"
-      }, // Will be filled by ActionabilityAgent
+      completeness: { score: 0, metrics: {} }, // Will be filled by CompletenessAgent
+      accuracy: evaluation.accuracy,
+      clinicalRelevance: evaluation.clinicalRelevance,
+      actionability: { score: 0, metrics: {} }, // Will be filled by ActionabilityAgent
       overallQuality: evaluation.overallClinicalQuality
     };
   }
