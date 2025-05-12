@@ -37,7 +37,7 @@ export const getApiProvider = (): ApiProvider => {
     ollamaUrl: localStorage.getItem(OLLAMA_URL_LOCAL_STORAGE) || 'http://localhost:11434',
     ollamaModel: localStorage.getItem(OLLAMA_MODEL_LOCAL_STORAGE) || 'llama3',
     groqApiKey: localStorage.getItem(GROQ_API_KEY_LOCAL_STORAGE) || '',
-    groqModel: localStorage.getItem(GROQ_MODEL_LOCAL_STORAGE) || 'llama3-8b-8192',
+    groqModel: localStorage.getItem(GROQ_MODEL_LOCAL_STORAGE) || 'meta-llama/llama-4-scout-17b-16e-instruct',
   };
 };
 
@@ -72,7 +72,7 @@ export const setGroqApiKey = (apiKey: string): void => {
 };
 
 export const getGroqModel = (): string => {
-  return localStorage.getItem(GROQ_MODEL_LOCAL_STORAGE) || 'llama3-8b-8192';
+  return localStorage.getItem(GROQ_MODEL_LOCAL_STORAGE) || 'meta-llama/llama-4-scout-17b-16e-instruct';
 };
 
 export const setGroqModel = (model: string): void => {
