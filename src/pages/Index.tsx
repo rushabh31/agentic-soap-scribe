@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import { Beaker, FileText, BarChart, ArrowRight, MessageSquare, Settings } from 'lucide-react';
-
 const Index = () => {
-  return (
-    <PageLayout>
+  return <PageLayout>
       <div className="max-w-5xl mx-auto">
         {/* Hero Section */}
         <div className="text-center py-12 mb-8">
@@ -29,16 +26,7 @@ const Index = () => {
         
         {/* Features Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 card-hover">
-            <div className="bg-medical-secondary w-12 h-12 rounded-full flex items-center justify-center mb-4">
-              <Beaker className="h-6 w-6 text-medical-primary" />
-            </div>
-            <h3 className="font-bold text-lg mb-2">Multi-Agent Architecture</h3>
-            <p className="text-gray-600">
-              Specialized AI agents collaborate to process different aspects of healthcare transcripts, 
-              enhancing accuracy and completeness.
-            </p>
-          </div>
+          
           
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 card-hover">
             <div className="bg-medical-secondary w-12 h-12 rounded-full flex items-center justify-center mb-4">
@@ -126,8 +114,6 @@ const Index = () => {
           </Button>
         </div>
       </div>
-    </PageLayout>
-  );
+    </PageLayout>;
 };
-
 export default Index;
