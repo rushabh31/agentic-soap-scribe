@@ -1,6 +1,7 @@
 
-import { Agent } from './Agent';
+import { LangGraphAgent } from './LangGraphAgent';
 import { AgentState, SOAPNote } from '@/types/agent';
+import { v4 as uuidv4 } from 'uuid';
 
 const SYSTEM_PROMPT = `
 You are a specialized SOAP Generator in a healthcare contact center multi-agent system, focused on creating accurate, clinical documentation.
@@ -29,14 +30,16 @@ Your task is to synthesize information into a structured SOAP note that follows 
    - Document all medical conditions mentioned
 
 Your output will be directly reviewed by healthcare professionals and must meet strict clinical documentation standards. Do not omit critical details, and do not include information that cannot be verified from the transcript.
+
+You have access to a transcript_analysis tool that can help you extract specific information from the transcript.
 `;
 
-export class SOAPGenerator extends Agent {
+export class SOAPGenerator extends LangGraphAgent {
   constructor() {
     super('soap_generator', SYSTEM_PROMPT);
   }
 
-  public async process(state: AgentState): Promise<AgentState> {
+  public async processState(state: AgentState): Promise<AgentState> {
     // Create context for the SOAP generation based on all gathered information
     const context = JSON.stringify({
       disposition: state.disposition,
@@ -62,16 +65,16 @@ This is for official medical documentation, so:
 CALL CONTEXT:
 ${context}
 
-Original transcript for reference:
-${state.transcript}
-
 Remember: Accuracy is critical. Healthcare professionals will rely on this documentation. Format your response with the exact headings: SUBJECTIVE, OBJECTIVE, ASSESSMENT, and PLAN.
+
+You can use the transcript_analysis tool to examine specific parts of the transcript if needed.
 `;
 
-    const soapResponse = await this.callLLM(prompt);
+    // Call the LangGraph agent for SOAP generation
+    const result = await this.process(state, prompt);
     
     // Parse the SOAP sections
-    const sections = this.parseSOAPSections(soapResponse);
+    const sections = this.parseSOAPSections(result.output);
     
     // Update the state with the SOAP note
     const updatedState = {
@@ -80,13 +83,22 @@ Remember: Accuracy is critical. Healthcare professionals will rely on this docum
     };
 
     // Send a message about the SOAP generation
-    const message = `SOAP note generated with focused accuracy on the clinical details.
+    const message = {
+      id: uuidv4(),
+      from: 'soap_generator' as any,
+      to: 'all' as any,
+      content: `SOAP note generated with focused accuracy on the clinical details.
 - Subjective section includes ${this.countWords(sections.subjective)} words
 - Objective section includes ${this.countWords(sections.objective)} words  
 - Assessment section includes ${this.countWords(sections.assessment)} words
-- Plan section includes ${this.countWords(sections.plan)} words`;
-    
-    return this.sendMessage(updatedState, 'all', message);
+- Plan section includes ${this.countWords(sections.plan)} words`,
+      timestamp: Date.now()
+    };
+
+    return {
+      ...updatedState,
+      messages: [...updatedState.messages, message]
+    };
   }
   
   private countWords(text: string): number {

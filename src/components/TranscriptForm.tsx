@@ -7,13 +7,26 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/components/ui/use-toast';
 import { FileText, AlertCircle, Send } from 'lucide-react';
 import { useAgent } from '@/contexts/AgentContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import ApiKeyForm from './ApiKeyForm';
 
 const TranscriptForm: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { processTranscript, isProcessing, hasApiKey } = useAgent();
+  const { processTranscript, isProcessing } = useAgent();
+  const { 
+    apiProvider, 
+    isOllamaConnected, 
+    isOllamaModelConnected, 
+    isGroqConnected, 
+    isGroqModelConnected
+  } = useSettings();
+  
+  // Check the API configuration status based on selected provider
+  const hasApiConfig = apiProvider === 'ollama' 
+    ? (isOllamaConnected && isOllamaModelConnected)
+    : (isGroqConnected && isGroqModelConnected);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +35,25 @@ const TranscriptForm: React.FC = () => {
       toast({
         title: 'Empty Transcript',
         description: 'Please enter a transcript to analyze.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check API connection based on selected provider
+    if (apiProvider === 'ollama' && (!isOllamaConnected || !isOllamaModelConnected)) {
+      toast({
+        title: 'Ollama Connection Error',
+        description: 'Cannot connect to Ollama server or model. Please check your configuration.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (apiProvider === 'groq' && (!isGroqConnected || !isGroqModelConnected)) {
+      toast({
+        title: 'Groq API Error',
+        description: 'Cannot connect to Groq API or model. Please check your API key and model.',
         variant: 'destructive',
       });
       return;
@@ -40,8 +72,8 @@ const TranscriptForm: React.FC = () => {
     }
   };
 
-  // If no API key is configured, show the API key form instead
-  if (!hasApiKey) {
+  // If no API is configured, show the API configuration form instead
+  if (!hasApiConfig) {
     return (
       <div className="space-y-6">
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
@@ -51,7 +83,7 @@ const TranscriptForm: React.FC = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Please configure your Groq API key before proceeding
+                Please configure your {apiProvider === 'ollama' ? 'Ollama' : 'Groq API'} connection before proceeding
               </p>
             </div>
           </div>
@@ -60,6 +92,10 @@ const TranscriptForm: React.FC = () => {
       </div>
     );
   }
+
+  // Show warning if API connection is not working
+  const showApiWarning = (apiProvider === 'ollama' && (!isOllamaConnected || !isOllamaModelConnected)) || 
+                         (apiProvider === 'groq' && (!isGroqConnected || !isGroqModelConnected));
 
   return (
     <form onSubmit={handleSubmit}>
@@ -74,19 +110,35 @@ const TranscriptForm: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {showApiWarning && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    {apiProvider === 'ollama' 
+                      ? 'Cannot connect to Ollama server or model. Please check your configuration in Settings.' 
+                      : 'Cannot connect to Groq API or model. Please check your API key and model in Settings.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <Textarea
             placeholder="Paste your healthcare call transcript here..."
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
             className="min-h-[300px] font-mono text-sm"
-            disabled={isProcessing}
+            disabled={isProcessing || showApiWarning}
           />
         </CardContent>
         <CardFooter className="flex justify-end">
           <Button 
             type="submit" 
             className="px-6 py-2" 
-            disabled={isProcessing || !transcript.trim()}
+            disabled={isProcessing || !transcript.trim() || showApiWarning}
           >
             {isProcessing ? 'Processing...' : 'Process Transcript'} <Send className="ml-2 h-4 w-4" />
           </Button>

@@ -28,24 +28,25 @@ export class ActionabilityAgent extends Agent {
     // Evaluate the actionability of the multi-agent SOAP note
     const multiAgentActionability = await this.evaluateActionability(
       state.soapNote, 
-      state.transcript
+      state.transcript || ""
     );
     
     // Evaluate the actionability of the sequential SOAP note
     const sequentialActionability = await this.evaluateActionability(
       state.evaluationResults.sequential.soapNote || state.soapNote,
-      state.transcript
+      state.transcript || ""
     );
     
     // Update the evaluation results
     const updatedEvaluationResults = {
+      ...state.evaluationResults,
       multiAgent: {
         ...state.evaluationResults.multiAgent,
         actionability: multiAgentActionability,
         overallQuality: this.calculateOverallQuality(
-          state.evaluationResults.multiAgent.completeness.score,
-          state.evaluationResults.multiAgent.accuracy.score,
-          state.evaluationResults.multiAgent.clinicalRelevance.score,
+          state.evaluationResults.multiAgent.completeness?.score || 0,
+          state.evaluationResults.multiAgent.accuracy?.score || 0,
+          state.evaluationResults.multiAgent.clinicalRelevance?.score || 0,
           multiAgentActionability.score
         )
       },
@@ -53,9 +54,9 @@ export class ActionabilityAgent extends Agent {
         ...state.evaluationResults.sequential,
         actionability: sequentialActionability,
         overallQuality: this.calculateOverallQuality(
-          state.evaluationResults.sequential.completeness.score,
-          state.evaluationResults.sequential.accuracy.score,
-          state.evaluationResults.sequential.clinicalRelevance.score,
+          state.evaluationResults.sequential.completeness?.score || 0,
+          state.evaluationResults.sequential.accuracy?.score || 0,
+          state.evaluationResults.sequential.clinicalRelevance?.score || 0,
           sequentialActionability.score
         )
       }
@@ -68,7 +69,7 @@ export class ActionabilityAgent extends Agent {
     };
     
     // Send a message about the evaluation completion
-    const message = `Evaluation complete. Multi-agent system overall quality: ${updatedEvaluationResults.multiAgent.overallQuality.toFixed(1)}/10, Sequential pipeline overall quality: ${updatedEvaluationResults.sequential.overallQuality.toFixed(1)}/10`;
+    const message = `Evaluation complete. Multi-agent system overall quality: ${updatedEvaluationResults.multiAgent.overallQuality?.toFixed(1)}/10, Sequential pipeline overall quality: ${updatedEvaluationResults.sequential.overallQuality?.toFixed(1)}/10`;
     
     return this.sendMessage(updatedState, 'all', message);
   }

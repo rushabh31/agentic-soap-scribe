@@ -1,7 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { AgentState, AgentType, AgentMessage } from '@/types/agent';
-import { callGroqAPI, GroqMessage } from '../groqAPI';
+import { callApi, ApiMessage, getApiProvider } from '@/services/apiService';
 import { toast } from 'sonner';
 
 export abstract class Agent {
@@ -41,12 +41,12 @@ export abstract class Agent {
     context: string = ''
   ): Promise<string> {
     try {
-      const messages: GroqMessage[] = [
+      const messages: ApiMessage[] = [
         { role: 'system', content: this.systemPrompt + (context ? `\n\nAdditional context:\n${context}` : '') },
         { role: 'user', content: prompt }
       ];
 
-      return await callGroqAPI(messages);
+      return await callApi(messages);
     } catch (error) {
       toast.error(`Agent ${this.type} encountered an error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;

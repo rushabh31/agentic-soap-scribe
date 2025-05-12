@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Beaker, Home, FileText, BarChart } from 'lucide-react';
+import { Beaker, Home, FileText, BarChart, ActivitySquare } from 'lucide-react';
 
 const Header = () => {
   return (
@@ -33,6 +33,12 @@ const Header = () => {
                 <Link to="/results" className="flex items-center space-x-1 text-gray-600 hover:text-medical-primary">
                   <BarChart className="h-5 w-5" />
                   <span>Results</span>
+                </Link>
+              </li>
+              <li>
+                <Link to="/architecture" className="flex items-center space-x-1 text-gray-600 hover:text-medical-primary">
+                  <ActivitySquare className="h-5 w-5" />
+                  <span>System Architecture</span>
                 </Link>
               </li>
             </ul>

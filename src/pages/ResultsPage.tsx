@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
@@ -9,11 +8,49 @@ import EvaluationResultsDisplay from '@/components/result/EvaluationResults';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Layers, BarChart, ArrowLeft, AlertCircle } from 'lucide-react';
+import { 
+  FileText, Layers, BarChart, ArrowLeft, AlertCircle, 
+  Clock, Scale, MessageSquare, Clipboard, Brain 
+} from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
+const UrgencyBadge = ({ urgency }: { urgency: { level: number; reason: string } }) => {
+  const getUrgencyColor = () => {
+    // Convert level to number if it's coming as a string
+    const level = typeof urgency.level === 'string' ? parseInt(urgency.level, 10) : urgency.level;
+    
+    if (level === 3) {
+      return 'bg-red-100 text-red-800 border-red-300';
+    } else if (level === 2) {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    } else {
+      return 'bg-green-100 text-green-800 border-green-300';
+    }
+  };
+
+  const getUrgencyText = () => {
+    // Convert level to number if it's coming as a string
+    const level = typeof urgency.level === 'string' ? parseInt(urgency.level, 10) : urgency.level;
+    
+    if (level === 3) {
+      return 'High';
+    } else if (level === 2) {
+      return 'Medium';
+    } else {
+      return 'Low';
+    }
+  };
+
+  return (
+    <div className={`flex items-center gap-2 ${getUrgencyColor()}`}>
+      <Clock className="h-4 w-4" />
+      <span className="text-sm">{getUrgencyText()}</span>
+    </div>
+  );
+};
+
 const ResultsPage = () => {
-  const { state } = useAgent();
+  const { state, legacyResult, comparison, evaluationResults, currentAgent, agentInput, agentOutput } = useAgent();
   const navigate = useNavigate();
   
   // If there's no processed state, redirect to the transcripts page
@@ -50,7 +87,7 @@ const ResultsPage = () => {
     );
   }
   
-  const { soapNote, messages, evaluationResults } = state;
+  const { soapNote, messages, transcript } = state;
   
   return (
     <PageLayout>
@@ -71,55 +108,242 @@ const ResultsPage = () => {
               <h2 className="font-semibold">Transcript Processed Successfully</h2>
               <p className="text-sm text-gray-600">
                 {state.disposition ? `Call classified as: ${state.disposition}` : 'Call processed successfully'}
+                {state.sentiment && ` • Sentiment: ${state.sentiment.overall}`}
+                {state.urgency && ` • Urgency: ${state.urgency.level}`}
               </p>
             </div>
           </div>
         </div>
         
-        <Tabs defaultValue="soap" className="mb-6">
-          <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="soap" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              SOAP Note
+        <Tabs defaultValue="comparison" className="mb-6">
+          <TabsList className="grid grid-cols-6">
+            <TabsTrigger value="comparison" className="flex items-center gap-2">
+              <Scale className="h-4 w-4" />
+              Comparison
+            </TabsTrigger>
+            <TabsTrigger value="multiagent" className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Multi-Agent SOAP
+            </TabsTrigger>
+            <TabsTrigger value="legacy" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Legacy SOAP
             </TabsTrigger>
             <TabsTrigger value="agents" className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
               Agent Interactions
             </TabsTrigger>
             <TabsTrigger value="evaluation" className="flex items-center gap-2">
               <BarChart className="h-4 w-4" />
-              Evaluation
+              Detailed Evaluation
+            </TabsTrigger>
+            <TabsTrigger value="transcript" className="flex items-center gap-2">
+              <Clipboard className="h-4 w-4" />
+              Original Transcript
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="soap">
-            <div className="space-y-6">
-              {soapNote && (
-                <SOAPNoteDisplay soapNote={soapNote} title="Multi-Agent SOAP Note" />
-              )}
+          <TabsContent value="comparison">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="shadow-md">
+                <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-indigo-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-purple-600" />
+                    Multi-Agent System SOAP
+                  </CardTitle>
+                  <CardDescription>Collaborative AI system with specialized agents</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {soapNote && (
+                    <SOAPNoteDisplay soapNote={soapNote} title="" />
+                  )}
+                </CardContent>
+              </Card>
               
-              {evaluationResults?.sequential?.soapNote && (
-                <>
-                  <Separator className="my-8" />
-                  <SOAPNoteDisplay 
-                    soapNote={evaluationResults.sequential.soapNote} 
-                    title="Sequential Pipeline SOAP Note (For Comparison)" 
-                  />
-                </>
-              )}
+              <Card className="shadow-md">
+                <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-sky-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    Legacy Pipeline SOAP
+                  </CardTitle>
+                  <CardDescription>Traditional sequential processing system</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {legacyResult?.soapNote && (
+                    <SOAPNoteDisplay soapNote={legacyResult.soapNote} title="" />
+                  )}
+                </CardContent>
+              </Card>
             </div>
+            
+            {evaluationResults && (
+              <div className="mt-6">
+                <EvaluationResultsDisplay results={evaluationResults} />
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="multiagent">
+            {soapNote && (
+              <Card className="shadow-md">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-purple-600" />
+                    Multi-Agent SOAP Note
+                  </CardTitle>
+                  <CardDescription>
+                    Generated by an intelligent multi-agent system that specializes in healthcare documentation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <SOAPNoteDisplay soapNote={soapNote} title="" />
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="legacy">
+            {legacyResult?.soapNote && (
+              <Card className="shadow-md">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-sky-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    Legacy Pipeline SOAP Note
+                  </CardTitle>
+                  <CardDescription>
+                    Generated by traditional sequential processing system
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <SOAPNoteDisplay soapNote={legacyResult.soapNote} title="" />
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="agents">
-            {messages && messages.length > 0 && (
-              <AgentInteractionDisplay messages={messages} />
-            )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                {messages && messages.length > 0 && (
+                  <AgentInteractionDisplay messages={messages} />
+                )}
+              </div>
+              <div>
+                <Card className="shadow-md">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Brain className="h-5 w-5 text-indigo-600" />
+                      Agent Processing Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-500">Current Agent</h3>
+                        <div className="font-medium text-lg">{currentAgent || 'None'}</div>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                        <h3 className="text-sm font-medium mb-2 text-gray-600">Latest Input</h3>
+                        <p className="text-xs whitespace-pre-wrap text-gray-600 max-h-40 overflow-y-auto">
+                          {agentInput || 'No current input'}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                        <h3 className="text-sm font-medium mb-2 text-gray-600">Latest Output</h3>
+                        <p className="text-xs whitespace-pre-wrap text-gray-600 max-h-40 overflow-y-auto">
+                          {agentOutput || 'No current output'}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-500">Message Count</h3>
+                        <div className="font-medium text-lg">{messages?.length || 0} messages</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-md mt-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <BarChart className="h-5 w-5 text-green-600" />
+                      Performance Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {state.urgency && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Urgency:</span>
+                          <UrgencyBadge urgency={state.urgency} />
+                        </div>
+                      )}
+                      
+                      {state.sentiment && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Sentiment:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            state.sentiment.overall === 'positive' ? 'bg-green-100 text-green-800' :
+                            state.sentiment.overall === 'negative' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {state.sentiment.overall} ({state.sentiment.score})
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Extracted Medical Info:</span>
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          {Object.keys(state.medicalInfo || {}).length} items
+                        </span>
+                      </div>
+                      
+                      {comparison?.winner && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Best System:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            comparison.winner === 'multiagent' ? 'bg-purple-100 text-purple-800' :
+                            comparison.winner === 'legacy' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {comparison.winner === 'multiagent' ? 'Multi-Agent' : 
+                             comparison.winner === 'legacy' ? 'Legacy Pipeline' : 'Tie'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
           
           <TabsContent value="evaluation">
             {evaluationResults && (
               <EvaluationResultsDisplay results={evaluationResults} />
             )}
+          </TabsContent>
+          
+          <TabsContent value="transcript">
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clipboard className="h-5 w-5 text-gray-600" />
+                  Original Transcript
+                </CardTitle>
+                <CardDescription>
+                  The complete conversation between healthcare representative and member
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-50 p-6 rounded-md border text-sm font-mono">
+                  <pre className="whitespace-pre-wrap">{transcript}</pre>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
