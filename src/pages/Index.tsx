@@ -25,31 +25,7 @@ const Index = () => {
         </div>
         
         {/* Features Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          
-          
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 card-hover">
-            <div className="bg-medical-secondary w-12 h-12 rounded-full flex items-center justify-center mb-4">
-              <FileText className="h-6 w-6 text-medical-primary" />
-            </div>
-            <h3 className="font-bold text-lg mb-2">Structured SOAP Notes</h3>
-            <p className="text-gray-600">
-              Generate comprehensive SOAP notes that follow clinical best practices and provide
-              actionable insights for healthcare professionals.
-            </p>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 card-hover">
-            <div className="bg-medical-secondary w-12 h-12 rounded-full flex items-center justify-center mb-4">
-              <BarChart className="h-6 w-6 text-medical-primary" />
-            </div>
-            <h3 className="font-bold text-lg mb-2">Quality Evaluation</h3>
-            <p className="text-gray-600">
-              Automatically evaluate and compare documentation quality between multi-agent
-              and traditional sequential approaches.
-            </p>
-          </div>
-        </div>
+        
         
         {/* How It Works Section */}
         <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 mb-12">
