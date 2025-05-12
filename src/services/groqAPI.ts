@@ -27,7 +27,7 @@ export const setApiKey = (apiKey: string): void => {
 
 export const callGroqAPI = async (
   messages: GroqMessage[],
-  model: string = 'llama-3.1-8b-instant'
+  model: string = 'gemma2-9b-it'
 ): Promise<string> => {
   const apiKey = getApiKey();
   
